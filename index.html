@@ -1,26 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <title>Motorev 3D AR Viewer v1.2</title>
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js?v=1.2"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Motorev 3D AR Viewer</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js?version=1.3"></script>
   <style>
-    /* Your existing CSS here */
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #000;
+      color: white;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    model-viewer {
+      width: 100vw;
+      height: 100vh;
+      background-color: #222;
+    }
+    
+    .ar-button {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: orange;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      z-index: 100;
+      -webkit-appearance: none;
+    }
+    
+    /* Rest of your CSS styles */
   </style>
 </head>
 <body>
-  <!-- Your existing HTML content here -->
+
+  <!-- Your HTML content here -->
+  <model-viewer 
+    src="motorev.glb?version=1.3"
+    alt="Motorev 3D Model"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    environment-image="neutral"
+    camera-controls
+    xr-environment
+    shadow-intensity="1">
+    <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
+  </model-viewer>
 
   <script>
-    // Clear cache for mobile devices
-    if (/Mobi|Android/i.test(navigator.userAgent)) {
+    // First, ensure the page is loaded fresh
+    if (performance.navigation.type === 2 || window.performance.getEntriesByType("navigation")[0].type === "back_forward") {
+      window.location.reload(true);
+    }
+
+    // Mobile detection and cache clearing
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // Clear caches if possible
       if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (let name of names) caches.delete(name);
+        caches.keys().then(function(cacheNames) {
+          cacheNames.forEach(function(cacheName) {
+            caches.delete(cacheName);
+          });
         });
       }
       
@@ -30,9 +86,44 @@
           window.location.reload();
         }
       });
+      
+      // Additional mobile optimizations
+      document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+          if (document.querySelector('model-viewer').modelIsVisible === undefined) {
+            window.location.reload();
+          }
+        }, 2000);
+      });
     }
 
-    // Your existing JavaScript code here
+    // Your existing JavaScript functionality
+    const modelViewer = document.querySelector('model-viewer');
+    const arButton = document.getElementById('ar-button');
+
+    function getRandom(min, max) {
+      return (Math.random() * (max - min) + min).toFixed(1);
+    }
+
+    function updateDummyData() {
+      // Your data update logic
+    }
+
+    // Initialize and set intervals
+    document.addEventListener('DOMContentLoaded', function() {
+      updateDummyData();
+      setInterval(updateDummyData, 1500);
+      
+      arButton.addEventListener('click', () => {
+        modelViewer.activateAR();
+      });
+
+      modelViewer.addEventListener('ar-status', (event) => {
+        arButton.textContent = event.detail.status === 'not-presenting' 
+          ? 'View in AR' 
+          : 'Exit AR';
+      });
+    });
   </script>
 </body>
 </html>
