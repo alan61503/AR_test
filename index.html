@@ -68,6 +68,23 @@
       color: #aaa;
       margin-left: 2px;
     }
+    .ar-hint {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0,0,0,0.7);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      text-align: center;
+      max-width: 80%;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255,255,255,0.2);
+      z-index: 90;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -107,21 +124,28 @@
     </div>
   </div>
 
+  <div class="ar-hint" id="ar-hint">
+    Point your camera at a white surface to place the model
+  </div>
+
   <model-viewer 
     src="motorev.glb"
     alt="Motorev 3D Model"
     ar
-    ar-modes="scene-viewer quick-look"
+    ar-modes="scene-viewer quick-look webxr"
     environment-image="neutral"
     auto-rotate
-    camera-controls>
+    camera-controls
+    ar-placement="floor"
+    xr-environment
+    shadow-intensity="1">
+    <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
   </model-viewer>
-
-  <button id="ar-button" class="ar-button">View in AR</button>
 
   <script>
     const modelViewer = document.querySelector('model-viewer');
     const arButton = document.getElementById('ar-button');
+    const arHint = document.getElementById('ar-hint');
 
     function getRandom(min, max) {
       return (Math.random() * (max - min) + min).toFixed(1);
@@ -143,14 +167,38 @@
     updateDummyData();
     setInterval(updateDummyData, 1500);
 
-    arButton.addEventListener('click', () => {
-      modelViewer.activateAR();
-    });
-
+    // Show hint when AR is activated
     modelViewer.addEventListener('ar-status', (event) => {
+      if (event.detail.status === 'session-started') {
+        arHint.style.display = 'block';
+      } else {
+        arHint.style.display = 'none';
+      }
+      
       arButton.textContent = event.detail.status === 'not-presenting' 
         ? 'View in AR' 
         : 'Exit AR';
+    });
+
+    // Configure the AR experience to prefer white surfaces
+    modelViewer.addEventListener('load', () => {
+      // Set up the model viewer for better white surface detection
+      modelViewer.exposure = 1.0;
+      modelViewer.shadowIntensity = 1;
+      modelViewer.environmentIntensity = 1;
+      
+      // Configure AR settings
+      if (modelViewer.ar) {
+        modelViewer.ar.placement = 'floor';
+        modelViewer.ar.preferredTargetSurface = 'white';
+      }
+    });
+
+    // For iOS Quick Look - we can't control detection as precisely
+    // but we can adjust the model scale and position
+    modelViewer.addEventListener('quick-look-button-tapped', () => {
+      modelViewer.scale = '0.5 0.5 0.5';
+      modelViewer.position = '0 0 0';
     });
   </script>
 </body>
