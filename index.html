@@ -3,34 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Motorev AR Viewer</title>
+  <title>Motorev AR Test</title>
 
-  <!-- model-viewer library -->
+  <!-- Import model-viewer library -->
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
   <style>
     body {
       margin: 0;
       background: #000;
-      font-family: Arial, sans-serif;
-      overflow: hidden;
-    }
-    .data-overlay {
-      position: fixed;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.6);
-      padding: 10px 20px;
-      border-radius: 10px;
-      color: orange;
-      text-align: center;
-      z-index: 100;
-    }
-    .data-overlay p {
-      margin: 4px 0;
-      font-size: 14px;
-      font-weight: bold;
     }
     model-viewer {
       width: 100vw;
@@ -40,50 +21,14 @@
 </head>
 <body>
 
-  <!-- Data overlay always visible -->
-  <div class="data-overlay">
-    <p>Voltage: <span id="voltage"></span></p>
-    <p>Current: <span id="current"></span></p>
-    <p>Temperature: <span id="temperature"></span></p>
-    <p>SOC: <span id="soc"></span></p>
-    <p>SOH: <span id="soh"></span></p>
-    <p>Speed: <span id="speed"></span></p>
-    <p>Range: <span id="range"></span></p>
-    <p>Status: <span id="status"></span></p>
-  </div>
-
-  <!-- AR model viewer -->
   <model-viewer
     src="motorev.glb"
     ar
     ar-modes="scene-viewer webxr quick-look"
     camera-controls
-    auto-rotate
-    style="background: #000;">
+    auto-rotate>
   </model-viewer>
-
-  <!-- Dummy Data Update Script -->
-  <script>
-    function getRandom(min, max) {
-      return (Math.random() * (max - min) + min).toFixed(1);
-    }
-
-    function updateDummyData() {
-      document.getElementById('voltage').innerText = `${getRandom(46, 47)} V`;
-      document.getElementById('current').innerText = `${getRandom(0.4, .6)} A`;
-      document.getElementById('temperature').innerText = `${getRandom(32, 35)} °C`;
-      document.getElementById('soc').innerText = `${getRandom(90, 95)} %`;
-      document.getElementById('soh').innerText = `${getRandom(95, 97)} %`;
-      document.getElementById('speed').innerText = `${getRandom(0, .2)} km/h`;
-      document.getElementById('range').innerText = `${getRandom(80, 85)} km`;
-      document.getElementById('status').innerText = "Connected";
-    }
-
-    // Initial update
-    updateDummyData();
-    // Update every 1.5 seconds
-    setInterval(updateDummyData, 1500);
-  </script>
 
 </body>
 </html>
+
