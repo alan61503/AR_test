@@ -4,70 +4,108 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Motorev 3D AR Viewer</title>
-
-  <!-- model-viewer library -->
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Arial', sans-serif;
       margin: 0;
       padding: 0;
       background-color: #000;
-      overflow: hidden;
-    }
-    h1 {
-      color: orange;
-      text-align: center;
-      margin: 10px 0;
-      font-size: 20px;
+      color: white;
     }
     model-viewer {
       width: 100vw;
-      height: 70vh;
-      background: #eee;
+      height: 100vh;
+      background-color: #222;
     }
     .ar-button {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       background-color: orange;
       color: white;
       border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
+      padding: 12px 24px;
+      border-radius: 30px;
       cursor: pointer;
       font-size: 16px;
-      margin: 10px auto;
-      display: block;
+      font-weight: bold;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      z-index: 100;
     }
-    .overlay {
-      position: absolute;
-      top: 5px;
-      left: 0;
-      width: 100%;
-      text-align: center;
-      color: orange;
-      font-size: 16px;
+    .data-panel {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      background-color: rgba(0,0,0,0.7);
+      border-radius: 15px;
+      padding: 15px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      backdrop-filter: blur(5px);
       z-index: 10;
-      pointer-events: none;
+      border: 1px solid rgba(255,165,0,0.3);
     }
-    .value {
-      margin: 4px 0;
+    .data-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .data-label {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 2px;
+    }
+    .data-value {
+      font-size: 16px;
+      font-weight: bold;
+      color: orange;
+    }
+    .unit {
+      font-size: 12px;
+      color: #aaa;
+      margin-left: 2px;
     }
   </style>
 </head>
 <body>
 
-  <div class="overlay">
-    <div class="value">Voltage: <span id="voltage">-- V</span></div>
-    <div class="value">Current: <span id="current">-- A</span></div>
-    <div class="value">Temperature: <span id="temperature">-- °C</span></div>
-    <div class="value">SOC: <span id="soc">-- %</span></div>
-    <div class="value">SOH: <span id="soh">-- %</span></div>
-    <div class="value">Speed: <span id="speed">-- km/h</span></div>
-    <div class="value">Range: <span id="range">-- km</span></div>
-    <div class="value">Status: <span id="status">--</span></div>
+  <div class="data-panel">
+    <div class="data-item">
+      <span class="data-label">Voltage</span>
+      <span class="data-value"><span id="voltage">--</span><span class="unit">V</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Current</span>
+      <span class="data-value"><span id="current">--</span><span class="unit">A</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Temperature</span>
+      <span class="data-value"><span id="temperature">--</span><span class="unit">°C</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">State of Charge</span>
+      <span class="data-value"><span id="soc">--</span><span class="unit">%</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">State of Health</span>
+      <span class="data-value"><span id="soh">--</span><span class="unit">%</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Speed</span>
+      <span class="data-value"><span id="speed">--</span><span class="unit">km/h</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Range</span>
+      <span class="data-value"><span id="range">--</span><span class="unit">km</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Status</span>
+      <span class="data-value"><span id="status">--</span></span>
+    </div>
   </div>
-
-  <h1>Motorev 3D Model</h1>
 
   <model-viewer 
     src="motorev.glb"
@@ -85,34 +123,30 @@
     const modelViewer = document.querySelector('model-viewer');
     const arButton = document.getElementById('ar-button');
 
-    // Dummy Data Update Function
     function getRandom(min, max) {
       return (Math.random() * (max - min) + min).toFixed(1);
     }
 
     function updateDummyData() {
-      document.getElementById('voltage').innerText = `${getRandom(46, 47)} V`;
-      document.getElementById('current').innerText = `${getRandom(0.4, 0.6)} A`;
-      document.getElementById('temperature').innerText = `${getRandom(32, 35)} °C`;
-      document.getElementById('soc').innerText = `${getRandom(90, 95)} %`;
-      document.getElementById('soh').innerText = `${getRandom(95, 97)} %`;
-      document.getElementById('speed').innerText = `${getRandom(0, 0.2)} km/h`;
-      document.getElementById('range').innerText = `${getRandom(80, 85)} km`;
+      document.getElementById('voltage').innerText = getRandom(46, 47);
+      document.getElementById('current').innerText = getRandom(0.4, 0.6);
+      document.getElementById('temperature').innerText = getRandom(32, 35);
+      document.getElementById('soc').innerText = getRandom(90, 95);
+      document.getElementById('soh').innerText = getRandom(95, 97);
+      document.getElementById('speed').innerText = getRandom(0, 0.2);
+      document.getElementById('range').innerText = getRandom(80, 85);
 
       const statuses = ["Connected"];
       document.getElementById('status').innerText = statuses[Math.floor(Math.random() * statuses.length)];
     }
 
-    // Initial update + every 1.5s
     updateDummyData();
     setInterval(updateDummyData, 1500);
 
-    // Activate AR when button is clicked
     arButton.addEventListener('click', () => {
       modelViewer.activateAR();
     });
 
-    // Update button text based on AR status
     modelViewer.addEventListener('ar-status', (event) => {
       arButton.textContent = event.detail.status === 'not-presenting' 
         ? 'View in AR' 
