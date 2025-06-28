@@ -19,6 +19,9 @@
       height: 100vh;
       background-color: #222;
     }
+    model-viewer[ar] {
+      background-color: transparent;
+    }
     .ar-button {
       position: fixed;
       bottom: 70px;
@@ -120,11 +123,27 @@
       display: none;
       z-index: 1000;
     }
+    .ar-data-panel {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      background-color: rgba(0,0,0,0.7);
+      border-radius: 15px;
+      padding: 15px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      backdrop-filter: blur(5px);
+      z-index: 10;
+      border: 1px solid rgba(255,165,0,0.3);
+      display: none;
+    }
   </style>
 </head>
 <body>
 
-  <div class="data-panel">
+  <div class="data-panel" id="data-panel">
     <div class="data-item">
       <span class="data-label">Voltage</span>
       <span class="data-value"><span id="voltage">46.5</span><span class="unit">V</span></span>
@@ -159,6 +178,41 @@
     </div>
   </div>
 
+  <div class="ar-data-panel" id="ar-data-panel">
+    <div class="data-item">
+      <span class="data-label">Voltage</span>
+      <span class="data-value"><span id="ar-voltage">46.5</span><span class="unit">V</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Current</span>
+      <span class="data-value"><span id="ar-current">0.5</span><span class="unit">A</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Temperature</span>
+      <span class="data-value"><span id="ar-temperature">34.2</span><span class="unit">°C</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">State of Charge</span>
+      <span class="data-value"><span id="ar-soc">92</span><span class="unit">%</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">State of Health</span>
+      <span class="data-value"><span id="ar-soh">96</span><span class="unit">%</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Speed</span>
+      <span class="data-value"><span id="ar-speed">0.1</span><span class="unit">km/h</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Range</span>
+      <span class="data-value"><span id="ar-range">82</span><span class="unit">km</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Status</span>
+      <span class="data-value"><span id="ar-status">Connected</span></span>
+    </div>
+  </div>
+
   <div class="ar-hint" id="ar-hint">
     Point your camera at any flat surface to place the model
   </div>
@@ -171,13 +225,14 @@
     src="motorev.glb"
     alt="Motorev 3D Model"
     ar
-    ar-modes="scene-viewer quick-look webxr"
+    ar-modes="webxr scene-viewer quick-look"
     environment-image="neutral"
     camera-controls
     xr-environment
     shadow-intensity="1"
     quick-look-browsers="safari chrome"
-    ar-scale="fixed">
+    ar-scale="fixed"
+    ar-placement="floor">
     <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
   </model-viewer>
 
@@ -188,156 +243,16 @@
     const surfaceMarker = document.getElementById('surface-marker');
     const loadingIndicator = document.getElementById('loading-indicator');
     const compatibilityMessage = document.getElementById('compatibility-message');
+    const dataPanel = document.getElementById('data-panel');
+    const arDataPanel = document.getElementById('ar-data-panel');
     
     let arSession = null;
     let hitTestSource = null;
     let lastDetectedPosition = null;
     let surfaceDetectionTimeout = null;
+    let dummyDataInterval = null;
 
     // Check AR availability
     async function checkARSupport() {
       try {
-        // Check for WebXR support
-        if (navigator.xr) {
-          const supported = await navigator.xr.isSessionSupported('immersive-ar');
-          return supported;
-        }
-        
-        // Check for iOS/Android AR support
-        if (modelViewer.canActivateAR) {
-          return true;
-        }
-        
-        return false;
-      } catch (error) {
-        console.error('AR support check failed:', error);
-        return false;
-      }
-    }
-
-    // Initialize with static values
-    function initializeData() {
-      // Values are already set in HTML for immediate display
-      setInterval(updateDummyData, 1500);
-    }
-
-    function updateDummyData() {
-      document.getElementById('current').innerText = (0.4 + Math.random() * 0.2).toFixed(1);
-      document.getElementById('temperature').innerText = (32 + Math.random() * 3).toFixed(1);
-    }
-
-    // AR Session Management
-    async function startARSession() {
-      try {
-        // First try WebXR
-        if (navigator.xr) {
-          await startWebXRSession();
-        } 
-        // Fallback to model-viewer's AR
-        else if (modelViewer.canActivateAR) {
-          modelViewer.activateAR();
-        } else {
-          showCompatibilityMessage("AR not supported on this device");
-        }
-      } catch (error) {
-        console.error('AR session failed:', error);
-        showCompatibilityMessage("AR failed to start: " + error.message);
-      }
-    }
-
-    async function startWebXRSession() {
-      try {
-        loadingIndicator.style.display = 'block';
-        
-        const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['local', 'hit-test'],
-          optionalFeatures: ['dom-overlay', 'light-estimation']
-        });
-        
-        arSession = session;
-        modelViewer.xrSession = session;
-        
-        const referenceSpace = await session.requestReferenceSpace('local');
-        hitTestSource = await session.requestHitTestSource({
-          space: referenceSpace,
-          entityTypes: ['plane']
-        });
-        
-        modelViewer.xrHitTestSource = hitTestSource;
-        modelViewer.xrReferenceSpace = referenceSpace;
-        
-        session.requestAnimationFrame(onXRFrame);
-        arHint.style.display = 'block';
-        arButton.textContent = 'Exit AR';
-        
-        session.addEventListener('end', cleanUpARSession);
-      } catch (error) {
-        console.error('WebXR session failed:', error);
-        loadingIndicator.style.display = 'none';
-        // Fallback to model-viewer AR
-        modelViewer.activateAR();
-      }
-    }
-
-    function cleanUpARSession() {
-      arSession = null;
-      hitTestSource = null;
-      arHint.style.display = 'none';
-      surfaceMarker.style.display = 'none';
-      loadingIndicator.style.display = 'none';
-      arButton.textContent = 'View in AR';
-      if (surfaceDetectionTimeout) {
-        clearTimeout(surfaceDetectionTimeout);
-        surfaceDetectionTimeout = null;
-      }
-    }
-
-    function showCompatibilityMessage(message) {
-      compatibilityMessage.textContent = message;
-      compatibilityMessage.style.display = 'block';
-      setTimeout(() => {
-        compatibilityMessage.style.display = 'none';
-      }, 5000);
-    }
-
-    // Initialize
-    document.addEventListener('DOMContentLoaded', async () => {
-      initializeData();
-      
-      // Check AR support and enable/disable button accordingly
-      const arSupported = await checkARSupport();
-      if (!arSupported) {
-        arButton.disabled = true;
-        arButton.textContent = 'AR Not Available';
-        showCompatibilityMessage("Augmented Reality is not supported on this device/browser");
-      }
-    });
-
-    arButton.addEventListener('click', async () => {
-      if (arSession) {
-        await arSession.end();
-      } else {
-        await startARSession();
-      }
-    });
-
-    modelViewer.addEventListener('ar-status', (event) => {
-      if (event.detail.status === 'session-started') {
-        arHint.style.display = 'block';
-      } else if (event.detail.status === 'not-presenting') {
-        cleanUpARSession();
-      }
-      
-      arButton.textContent = event.detail.status === 'not-presenting' 
-        ? 'View in AR' 
-        : 'Exit AR';
-    });
-
-    modelViewer.addEventListener('load', () => {
-      modelViewer.exposure = 1.2;
-      modelViewer.shadowIntensity = 1.2;
-      modelViewer.environmentIntensity = 1.1;
-    });
-  </script>
-</body>
-</html>
+       
