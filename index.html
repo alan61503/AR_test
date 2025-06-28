@@ -3,320 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Motorev 3D AR Viewer</title>
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Motorev 3D AR Viewer v1.2</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js?v=1.2"></script>
   <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #000;
-      color: white;
-    }
-    model-viewer {
-      width: 100vw;
-      height: 100vh;
-      background-color: #222;
-    }
-    .ar-button {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: orange;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 30px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      z-index: 100;
-    }
-    .data-panel {
-      position: fixed;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      background-color: rgba(0,0,0,0.7);
-      border-radius: 15px;
-      padding: 15px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      backdrop-filter: blur(5px);
-      z-index: 10;
-      border: 1px solid rgba(255,165,0,0.3);
-    }
-    .data-item {
-      display: flex;
-      flex-direction: column;
-    }
-    .data-label {
-      font-size: 12px;
-      color: #aaa;
-      margin-bottom: 2px;
-    }
-    .data-value {
-      font-size: 16px;
-      font-weight: bold;
-      color: orange;
-    }
-    .unit {
-      font-size: 12px;
-      color: #aaa;
-      margin-left: 2px;
-    }
-    .ar-hint {
-      position: fixed;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: rgba(0,0,0,0.7);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 20px;
-      font-size: 14px;
-      text-align: center;
-      max-width: 80%;
-      backdrop-filter: blur(5px);
-      border: 1px solid rgba(255,255,255,0.2);
-      z-index: 90;
-      display: none;
-    }
-    .surface-marker {
-      position: absolute;
-      width: 100px;
-      height: 100px;
-      border: 2px dashed rgba(255, 255, 255, 0.5);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 5;
-      display: none;
-    }
+    /* Your existing CSS here */
   </style>
 </head>
 <body>
-
-  <div class="data-panel">
-    <div class="data-item">
-      <span class="data-label">Voltage</span>
-      <span class="data-value"><span id="voltage">--</span><span class="unit">V</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Current</span>
-      <span class="data-value"><span id="current">--</span><span class="unit">A</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Temperature</span>
-      <span class="data-value"><span id="temperature">--</span><span class="unit">°C</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Charge</span>
-      <span class="data-value"><span id="soc">--</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Health</span>
-      <span class="data-value"><span id="soh">--</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Speed</span>
-      <span class="data-value"><span id="speed">--</span><span class="unit">km/h</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Range</span>
-      <span class="data-value"><span id="range">--</span><span class="unit">km</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Status</span>
-      <span class="data-value"><span id="status">--</span></span>
-    </div>
-  </div>
-
-  <div class="ar-hint" id="ar-hint">
-    Point your camera at a white surface to place the model
-  </div>
-
-  <div class="surface-marker" id="surface-marker"></div>
-
-  <model-viewer 
-    src="motorev.glb"
-    alt="Motorev 3D Model"
-    ar
-    ar-modes="webxr scene-viewer quick-look"
-    environment-image="neutral"
-    auto-rotate
-    camera-controls
-    xr-environment
-    shadow-intensity="1">
-    <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
-  </model-viewer>
+  <!-- Your existing HTML content here -->
 
   <script>
-    const modelViewer = document.querySelector('model-viewer');
-    const arButton = document.getElementById('ar-button');
-    const arHint = document.getElementById('ar-hint');
-    const surfaceMarker = document.getElementById('surface-marker');
-    let arSession = null;
-    let hitTestSource = null;
-    let lastDetectedPosition = null;
-
-    function getRandom(min, max) {
-      return (Math.random() * (max - min) + min).toFixed(1);
-    }
-
-    function updateDummyData() {
-      document.getElementById('voltage').innerText = getRandom(46, 47);
-      document.getElementById('current').innerText = getRandom(0.4, 0.6);
-      document.getElementById('temperature').innerText = getRandom(32, 35);
-      document.getElementById('soc').innerText = getRandom(90, 95);
-      document.getElementById('soh').innerText = getRandom(95, 97);
-      document.getElementById('speed').innerText = getRandom(0, 0.2);
-      document.getElementById('range').innerText = getRandom(80, 85);
-
-      const statuses = ["Connected"];
-      document.getElementById('status').innerText = statuses[Math.floor(Math.random() * statuses.length)];
-    }
-
-    updateDummyData();
-    setInterval(updateDummyData, 1500);
-
-    // Custom WebXR surface detection
-    async function onXRFrame(time, frame) {
-      if (!arSession || !hitTestSource) return;
-
-      try {
-        const hitTestResults = frame.getHitTestResults(hitTestSource);
-        
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0];
-          const pose = hit.getPose(modelViewer.xrWebglLayer.space);
-          
-          // Check if the surface is white (brightness threshold)
-          const session = modelViewer.xrSession;
-          const viewerPose = frame.getViewerPose(modelViewer.xrReferenceSpace);
-          
-          if (viewerPose && pose) {
-            const position = pose.transform.position;
-            lastDetectedPosition = position;
-            
-            // Show marker where white surface is detected
-            surfaceMarker.style.display = 'block';
-            const canvas = modelViewer.canvas;
-            const rect = canvas.getBoundingClientRect();
-            
-            // Convert 3D position to 2D screen coordinates
-            const point = new XRRigidTransform(position);
-            const viewportPoint = viewerPose.views[0].projectionMatrix.transformPoint(point);
-            
-            const x = (viewportPoint.x * 0.5 + 0.5) * rect.width + rect.left;
-            const y = (1 - (viewportPoint.y * 0.5 + 0.5)) * rect.height + rect.top;
-            
-            surfaceMarker.style.left = `${x - 50}px`;
-            surfaceMarker.style.top = `${y - 50}px`;
-            
-            // Place model when user taps
-            modelViewer.modelIsVisible = true;
-            modelViewer.updateFraming();
-          }
-        } else {
-          surfaceMarker.style.display = 'none';
-        }
-      } catch (error) {
-        console.error('Error during hit test:', error);
-      }
-    }
-
-    async function startWebXRSession() {
-      try {
-        // Request WebXR session with hit-test feature
-        const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test', 'dom-overlay'],
-          domOverlay: { root: document.body }
+    // Clear cache for mobile devices
+    if (/Mobi|Android/i.test(navigator.userAgent)) {
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (let name of names) caches.delete(name);
         });
-        
-        arSession = session;
-        modelViewer.xrSession = session;
-        
-        // Set up reference space and hit test source
-        const referenceSpace = await session.requestReferenceSpace('viewer');
-        const hitTestSource = await session.requestHitTestSource({
-          space: referenceSpace,
-          entityTypes: ['plane']
-        });
-        
-        modelViewer.xrHitTestSource = hitTestSource;
-        modelViewer.xrReferenceSpace = referenceSpace;
-        
-        // Start the render loop
-        session.requestAnimationFrame(onXRFrame);
-        
-        // Show instructions
-        arHint.style.display = 'block';
-        arButton.textContent = 'Exit AR';
-        
-        session.addEventListener('end', () => {
-          arSession = null;
-          hitTestSource = null;
-          arHint.style.display = 'none';
-          surfaceMarker.style.display = 'none';
-          arButton.textContent = 'View in AR';
-        });
-      } catch (error) {
-        console.error('WebXR session failed:', error);
-        arHint.textContent = 'AR not available: ' + error.message;
-        arHint.style.display = 'block';
-      }
-    }
-
-    // Handle AR button click
-    arButton.addEventListener('click', async () => {
-      if (arSession) {
-        await arSession.end();
-      } else {
-        // First try WebXR, fall back to native AR
-        if (navigator.xr) {
-          await startWebXRSession();
-        } else {
-          modelViewer.activateAR();
-        }
-      }
-    });
-
-    // Model Viewer AR events
-    modelViewer.addEventListener('ar-status', (event) => {
-      if (event.detail.status === 'session-started') {
-        arHint.style.display = 'block';
-      } else if (event.detail.status === 'not-presenting') {
-        arHint.style.display = 'none';
-        surfaceMarker.style.display = 'none';
       }
       
-      arButton.textContent = event.detail.status === 'not-presenting' 
-        ? 'View in AR' 
-        : 'Exit AR';
-    });
+      // Force reload if page is loaded from cache
+      window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+          window.location.reload();
+        }
+      });
+    }
 
-    // Configure the model viewer
-    modelViewer.addEventListener('load', () => {
-      modelViewer.exposure = 1.0;
-      modelViewer.shadowIntensity = 1;
-      modelViewer.environmentIntensity = 1;
-      
-      // For WebXR, we'll handle placement manually
-      modelViewer.arPlacement = 'none';
-    });
-
-    // Handle taps to place model in WebXR
-    modelViewer.addEventListener('click', (event) => {
-      if (arSession && lastDetectedPosition) {
-        // Place the model at the last detected position
-        modelViewer.modelPosition = `${lastDetectedPosition.x} ${lastDetectedPosition.y} ${lastDetectedPosition.z}`;
-        modelViewer.modelIsVisible = true;
-        surfaceMarker.style.display = 'none';
-      }
-    });
+    // Your existing JavaScript code here
   </script>
 </body>
 </html>
