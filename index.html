@@ -12,6 +12,7 @@
       padding: 0;
       background-color: #000;
       color: white;
+      touch-action: manipulation;
     }
     model-viewer {
       width: 100vw;
@@ -20,7 +21,7 @@
     }
     .ar-button {
       position: fixed;
-      bottom: 20px;
+      bottom: 70px; /* Raised higher from bottom */
       left: 50%;
       transform: translateX(-50%);
       background-color: orange;
@@ -70,7 +71,7 @@
     }
     .ar-hint {
       position: fixed;
-      bottom: 80px;
+      bottom: 120px; /* Adjusted to be above the button */
       left: 50%;
       transform: translateX(-50%);
       background-color: rgba(0,0,0,0.7);
@@ -87,12 +88,22 @@
     }
     .surface-marker {
       position: absolute;
-      width: 100px;
-      height: 100px;
-      border: 2px dashed rgba(255, 255, 255, 0.5);
+      width: 120px; /* Larger for better visibility */
+      height: 120px;
+      border: 2px dashed rgba(255, 255, 255, 0.7); /* More visible */
       border-radius: 50%;
       pointer-events: none;
       z-index: 5;
+      display: none;
+    }
+    .loading-indicator {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: orange;
+      font-size: 18px;
+      z-index: 1000;
       display: none;
     }
   </style>
@@ -135,10 +146,11 @@
   </div>
 
   <div class="ar-hint" id="ar-hint">
-    Point your camera at a white surface to place the model
+    Point your camera at any flat surface to place the model
   </div>
 
   <div class="surface-marker" id="surface-marker"></div>
+  <div class="loading-indicator" id="loading-indicator">Detecting surface...</div>
 
   <model-viewer 
     src="motorev.glb"
@@ -146,10 +158,11 @@
     ar
     ar-modes="webxr scene-viewer quick-look"
     environment-image="neutral"
-    auto-rotate
     camera-controls
     xr-environment
-    shadow-intensity="1">
+    shadow-intensity="1"
+    quick-look-browsers="safari chrome"
+    ar-scale="fixed">
     <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
   </model-viewer>
 
@@ -158,31 +171,31 @@
     const arButton = document.getElementById('ar-button');
     const arHint = document.getElementById('ar-hint');
     const surfaceMarker = document.getElementById('surface-marker');
+    const loadingIndicator = document.getElementById('loading-indicator');
     let arSession = null;
     let hitTestSource = null;
     let lastDetectedPosition = null;
+    let surfaceDetectionTimeout = null;
 
-    function getRandom(min, max) {
-      return (Math.random() * (max - min) + min).toFixed(1);
+    // Initialize data immediately
+    function initializeData() {
+      document.getElementById('voltage').innerText = '46.5';
+      document.getElementById('current').innerText = '0.5';
+      document.getElementById('temperature').innerText = '34.2';
+      document.getElementById('soc').innerText = '92';
+      document.getElementById('soh').innerText = '96';
+      document.getElementById('speed').innerText = '0.1';
+      document.getElementById('range').innerText = '82';
+      document.getElementById('status').innerText = 'Connected';
     }
 
     function updateDummyData() {
-      document.getElementById('voltage').innerText = getRandom(46, 47);
-      document.getElementById('current').innerText = getRandom(0.4, 0.6);
-      document.getElementById('temperature').innerText = getRandom(32, 35);
-      document.getElementById('soc').innerText = getRandom(90, 95);
-      document.getElementById('soh').innerText = getRandom(95, 97);
-      document.getElementById('speed').innerText = getRandom(0, 0.2);
-      document.getElementById('range').innerText = getRandom(80, 85);
-
-      const statuses = ["Connected"];
-      document.getElementById('status').innerText = statuses[Math.floor(Math.random() * statuses.length)];
+      // Only update values that should change
+      document.getElementById('current').innerText = (0.4 + Math.random() * 0.2).toFixed(1);
+      document.getElementById('temperature').innerText = (32 + Math.random() * 3).toFixed(1);
     }
 
-    updateDummyData();
-    setInterval(updateDummyData, 1500);
-
-    // Custom WebXR surface detection
+    // Faster surface detection with timeout
     async function onXRFrame(time, frame) {
       if (!arSession || !hitTestSource) return;
 
@@ -193,55 +206,59 @@
           const hit = hitTestResults[0];
           const pose = hit.getPose(modelViewer.xrWebglLayer.space);
           
-          // Check if the surface is white (brightness threshold)
-          const session = modelViewer.xrSession;
-          const viewerPose = frame.getViewerPose(modelViewer.xrReferenceSpace);
-          
-          if (viewerPose && pose) {
+          if (pose) {
             const position = pose.transform.position;
             lastDetectedPosition = position;
             
-            // Show marker where white surface is detected
+            // Show marker and hide loading
             surfaceMarker.style.display = 'block';
-            const canvas = modelViewer.canvas;
-            const rect = canvas.getBoundingClientRect();
+            loadingIndicator.style.display = 'none';
             
-            // Convert 3D position to 2D screen coordinates
-            const point = new XRRigidTransform(position);
-            const viewportPoint = viewerPose.views[0].projectionMatrix.transformPoint(point);
-            
-            const x = (viewportPoint.x * 0.5 + 0.5) * rect.width + rect.left;
-            const y = (1 - (viewportPoint.y * 0.5 + 0.5)) * rect.height + rect.top;
-            
-            surfaceMarker.style.left = `${x - 50}px`;
-            surfaceMarker.style.top = `${y - 50}px`;
-            
-            // Place model when user taps
-            modelViewer.modelIsVisible = true;
-            modelViewer.updateFraming();
+            // Auto-place after 1 second of detection
+            if (!surfaceDetectionTimeout) {
+              surfaceDetectionTimeout = setTimeout(() => {
+                placeModelAtDetectedPosition();
+              }, 1000);
+            }
           }
         } else {
           surfaceMarker.style.display = 'none';
+          if (surfaceDetectionTimeout) {
+            clearTimeout(surfaceDetectionTimeout);
+            surfaceDetectionTimeout = null;
+          }
         }
       } catch (error) {
         console.error('Error during hit test:', error);
+      }
+      
+      session.requestAnimationFrame(onXRFrame);
+    }
+
+    function placeModelAtDetectedPosition() {
+      if (lastDetectedPosition) {
+        modelViewer.modelPosition = `${lastDetectedPosition.x} ${lastDetectedPosition.y} ${lastDetectedPosition.z}`;
+        modelViewer.modelIsVisible = true;
+        surfaceMarker.style.display = 'none';
+        surfaceDetectionTimeout = null;
       }
     }
 
     async function startWebXRSession() {
       try {
-        // Request WebXR session with hit-test feature
+        loadingIndicator.style.display = 'block';
+        
         const session = await navigator.xr.requestSession('immersive-ar', {
           requiredFeatures: ['hit-test', 'dom-overlay'],
-          domOverlay: { root: document.body }
+          domOverlay: { root: document.body },
+          optionalFeatures: ['light-estimation']
         });
         
         arSession = session;
         modelViewer.xrSession = session;
         
-        // Set up reference space and hit test source
         const referenceSpace = await session.requestReferenceSpace('viewer');
-        const hitTestSource = await session.requestHitTestSource({
+        hitTestSource = await session.requestHitTestSource({
           space: referenceSpace,
           entityTypes: ['plane']
         });
@@ -249,10 +266,7 @@
         modelViewer.xrHitTestSource = hitTestSource;
         modelViewer.xrReferenceSpace = referenceSpace;
         
-        // Start the render loop
         session.requestAnimationFrame(onXRFrame);
-        
-        // Show instructions
         arHint.style.display = 'block';
         arButton.textContent = 'Exit AR';
         
@@ -261,21 +275,29 @@
           hitTestSource = null;
           arHint.style.display = 'none';
           surfaceMarker.style.display = 'none';
+          loadingIndicator.style.display = 'none';
           arButton.textContent = 'View in AR';
+          if (surfaceDetectionTimeout) {
+            clearTimeout(surfaceDetectionTimeout);
+            surfaceDetectionTimeout = null;
+          }
         });
       } catch (error) {
         console.error('WebXR session failed:', error);
+        loadingIndicator.style.display = 'none';
         arHint.textContent = 'AR not available: ' + error.message;
         arHint.style.display = 'block';
       }
     }
 
-    // Handle AR button click
+    // Initialize
+    initializeData();
+    setInterval(updateDummyData, 1500);
+
     arButton.addEventListener('click', async () => {
       if (arSession) {
         await arSession.end();
       } else {
-        // First try WebXR, fall back to native AR
         if (navigator.xr) {
           await startWebXRSession();
         } else {
@@ -284,13 +306,13 @@
       }
     });
 
-    // Model Viewer AR events
     modelViewer.addEventListener('ar-status', (event) => {
       if (event.detail.status === 'session-started') {
         arHint.style.display = 'block';
       } else if (event.detail.status === 'not-presenting') {
         arHint.style.display = 'none';
         surfaceMarker.style.display = 'none';
+        loadingIndicator.style.display = 'none';
       }
       
       arButton.textContent = event.detail.status === 'not-presenting' 
@@ -298,23 +320,16 @@
         : 'Exit AR';
     });
 
-    // Configure the model viewer
     modelViewer.addEventListener('load', () => {
-      modelViewer.exposure = 1.0;
-      modelViewer.shadowIntensity = 1;
-      modelViewer.environmentIntensity = 1;
-      
-      // For WebXR, we'll handle placement manually
-      modelViewer.arPlacement = 'none';
+      modelViewer.exposure = 1.2;
+      modelViewer.shadowIntensity = 1.2;
+      modelViewer.environmentIntensity = 1.1;
     });
 
-    // Handle taps to place model in WebXR
-    modelViewer.addEventListener('click', (event) => {
+    // Tap to place immediately
+    modelViewer.addEventListener('click', () => {
       if (arSession && lastDetectedPosition) {
-        // Place the model at the last detected position
-        modelViewer.modelPosition = `${lastDetectedPosition.x} ${lastDetectedPosition.y} ${lastDetectedPosition.z}`;
-        modelViewer.modelIsVisible = true;
-        surfaceMarker.style.display = 'none';
+        placeModelAtDetectedPosition();
       }
     });
   </script>
