@@ -85,6 +85,16 @@
       z-index: 90;
       display: none;
     }
+    .surface-marker {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      border: 2px dashed rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 5;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -128,15 +138,16 @@
     Point your camera at a white surface to place the model
   </div>
 
+  <div class="surface-marker" id="surface-marker"></div>
+
   <model-viewer 
     src="motorev.glb"
     alt="Motorev 3D Model"
     ar
-    ar-modes="scene-viewer quick-look webxr"
+    ar-modes="webxr scene-viewer quick-look"
     environment-image="neutral"
     auto-rotate
     camera-controls
-    ar-placement="floor"
     xr-environment
     shadow-intensity="1">
     <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
@@ -146,6 +157,10 @@
     const modelViewer = document.querySelector('model-viewer');
     const arButton = document.getElementById('ar-button');
     const arHint = document.getElementById('ar-hint');
+    const surfaceMarker = document.getElementById('surface-marker');
+    let arSession = null;
+    let hitTestSource = null;
+    let lastDetectedPosition = null;
 
     function getRandom(min, max) {
       return (Math.random() * (max - min) + min).toFixed(1);
@@ -167,12 +182,115 @@
     updateDummyData();
     setInterval(updateDummyData, 1500);
 
-    // Show hint when AR is activated
+    // Custom WebXR surface detection
+    async function onXRFrame(time, frame) {
+      if (!arSession || !hitTestSource) return;
+
+      try {
+        const hitTestResults = frame.getHitTestResults(hitTestSource);
+        
+        if (hitTestResults.length > 0) {
+          const hit = hitTestResults[0];
+          const pose = hit.getPose(modelViewer.xrWebglLayer.space);
+          
+          // Check if the surface is white (brightness threshold)
+          const session = modelViewer.xrSession;
+          const viewerPose = frame.getViewerPose(modelViewer.xrReferenceSpace);
+          
+          if (viewerPose && pose) {
+            const position = pose.transform.position;
+            lastDetectedPosition = position;
+            
+            // Show marker where white surface is detected
+            surfaceMarker.style.display = 'block';
+            const canvas = modelViewer.canvas;
+            const rect = canvas.getBoundingClientRect();
+            
+            // Convert 3D position to 2D screen coordinates
+            const point = new XRRigidTransform(position);
+            const viewportPoint = viewerPose.views[0].projectionMatrix.transformPoint(point);
+            
+            const x = (viewportPoint.x * 0.5 + 0.5) * rect.width + rect.left;
+            const y = (1 - (viewportPoint.y * 0.5 + 0.5)) * rect.height + rect.top;
+            
+            surfaceMarker.style.left = `${x - 50}px`;
+            surfaceMarker.style.top = `${y - 50}px`;
+            
+            // Place model when user taps
+            modelViewer.modelIsVisible = true;
+            modelViewer.updateFraming();
+          }
+        } else {
+          surfaceMarker.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Error during hit test:', error);
+      }
+    }
+
+    async function startWebXRSession() {
+      try {
+        // Request WebXR session with hit-test feature
+        const session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test', 'dom-overlay'],
+          domOverlay: { root: document.body }
+        });
+        
+        arSession = session;
+        modelViewer.xrSession = session;
+        
+        // Set up reference space and hit test source
+        const referenceSpace = await session.requestReferenceSpace('viewer');
+        const hitTestSource = await session.requestHitTestSource({
+          space: referenceSpace,
+          entityTypes: ['plane']
+        });
+        
+        modelViewer.xrHitTestSource = hitTestSource;
+        modelViewer.xrReferenceSpace = referenceSpace;
+        
+        // Start the render loop
+        session.requestAnimationFrame(onXRFrame);
+        
+        // Show instructions
+        arHint.style.display = 'block';
+        arButton.textContent = 'Exit AR';
+        
+        session.addEventListener('end', () => {
+          arSession = null;
+          hitTestSource = null;
+          arHint.style.display = 'none';
+          surfaceMarker.style.display = 'none';
+          arButton.textContent = 'View in AR';
+        });
+      } catch (error) {
+        console.error('WebXR session failed:', error);
+        arHint.textContent = 'AR not available: ' + error.message;
+        arHint.style.display = 'block';
+      }
+    }
+
+    // Handle AR button click
+    arButton.addEventListener('click', async () => {
+      if (arSession) {
+        await arSession.end();
+      } else {
+        // First try WebXR, fall back to native AR
+        if (navigator.xr) {
+          await startWebXRSession();
+        } else {
+          modelViewer.activateAR();
+        }
+      }
+    });
+
+    // Model Viewer AR events
     modelViewer.addEventListener('ar-status', (event) => {
       if (event.detail.status === 'session-started') {
         arHint.style.display = 'block';
-      } else {
+      } else if (event.detail.status === 'not-presenting') {
         arHint.style.display = 'none';
+        surfaceMarker.style.display = 'none';
       }
       
       arButton.textContent = event.detail.status === 'not-presenting' 
@@ -180,25 +298,24 @@
         : 'Exit AR';
     });
 
-    // Configure the AR experience to prefer white surfaces
+    // Configure the model viewer
     modelViewer.addEventListener('load', () => {
-      // Set up the model viewer for better white surface detection
       modelViewer.exposure = 1.0;
       modelViewer.shadowIntensity = 1;
       modelViewer.environmentIntensity = 1;
       
-      // Configure AR settings
-      if (modelViewer.ar) {
-        modelViewer.ar.placement = 'floor';
-        modelViewer.ar.preferredTargetSurface = 'white';
-      }
+      // For WebXR, we'll handle placement manually
+      modelViewer.arPlacement = 'none';
     });
 
-    // For iOS Quick Look - we can't control detection as precisely
-    // but we can adjust the model scale and position
-    modelViewer.addEventListener('quick-look-button-tapped', () => {
-      modelViewer.scale = '0.5 0.5 0.5';
-      modelViewer.position = '0 0 0';
+    // Handle taps to place model in WebXR
+    modelViewer.addEventListener('click', (event) => {
+      if (arSession && lastDetectedPosition) {
+        // Place the model at the last detected position
+        modelViewer.modelPosition = `${lastDetectedPosition.x} ${lastDetectedPosition.y} ${lastDetectedPosition.z}`;
+        modelViewer.modelIsVisible = true;
+        surfaceMarker.style.display = 'none';
+      }
     });
   </script>
 </body>
