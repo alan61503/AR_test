@@ -21,7 +21,7 @@
     }
     .ar-button {
       position: fixed;
-      bottom: 70px; /* Raised higher from bottom */
+      bottom: 70px;
       left: 50%;
       transform: translateX(-50%);
       background-color: orange;
@@ -71,7 +71,7 @@
     }
     .ar-hint {
       position: fixed;
-      bottom: 120px; /* Adjusted to be above the button */
+      bottom: 120px;
       left: 50%;
       transform: translateX(-50%);
       background-color: rgba(0,0,0,0.7);
@@ -88,9 +88,9 @@
     }
     .surface-marker {
       position: absolute;
-      width: 120px; /* Larger for better visibility */
+      width: 120px;
       height: 120px;
-      border: 2px dashed rgba(255, 255, 255, 0.7); /* More visible */
+      border: 2px dashed rgba(255, 255, 255, 0.7);
       border-radius: 50%;
       pointer-events: none;
       z-index: 5;
@@ -106,6 +106,20 @@
       z-index: 1000;
       display: none;
     }
+    .compatibility-message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      max-width: 80%;
+      display: none;
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
@@ -113,35 +127,35 @@
   <div class="data-panel">
     <div class="data-item">
       <span class="data-label">Voltage</span>
-      <span class="data-value"><span id="voltage">--</span><span class="unit">V</span></span>
+      <span class="data-value"><span id="voltage">46.5</span><span class="unit">V</span></span>
     </div>
     <div class="data-item">
       <span class="data-label">Current</span>
-      <span class="data-value"><span id="current">--</span><span class="unit">A</span></span>
+      <span class="data-value"><span id="current">0.5</span><span class="unit">A</span></span>
     </div>
     <div class="data-item">
       <span class="data-label">Temperature</span>
-      <span class="data-value"><span id="temperature">--</span><span class="unit">°C</span></span>
+      <span class="data-value"><span id="temperature">34.2</span><span class="unit">°C</span></span>
     </div>
     <div class="data-item">
       <span class="data-label">State of Charge</span>
-      <span class="data-value"><span id="soc">--</span><span class="unit">%</span></span>
+      <span class="data-value"><span id="soc">92</span><span class="unit">%</span></span>
     </div>
     <div class="data-item">
       <span class="data-label">State of Health</span>
-      <span class="data-value"><span id="soh">--</span><span class="unit">%</span></span>
+      <span class="data-value"><span id="soh">96</span><span class="unit">%</span></span>
     </div>
     <div class="data-item">
       <span class="data-label">Speed</span>
-      <span class="data-value"><span id="speed">--</span><span class="unit">km/h</span></span>
+      <span class="data-value"><span id="speed">0.1</span><span class="unit">km/h</span></span>
     </div>
     <div class="data-item">
       <span class="data-label">Range</span>
-      <span class="data-value"><span id="range">--</span><span class="unit">km</span></span>
+      <span class="data-value"><span id="range">82</span><span class="unit">km</span></span>
     </div>
     <div class="data-item">
       <span class="data-label">Status</span>
-      <span class="data-value"><span id="status">--</span></span>
+      <span class="data-value"><span id="status">Connected</span></span>
     </div>
   </div>
 
@@ -151,12 +165,13 @@
 
   <div class="surface-marker" id="surface-marker"></div>
   <div class="loading-indicator" id="loading-indicator">Detecting surface...</div>
+  <div class="compatibility-message" id="compatibility-message"></div>
 
   <model-viewer 
     src="motorev.glb"
     alt="Motorev 3D Model"
     ar
-    ar-modes="webxr scene-viewer quick-look"
+    ar-modes="scene-viewer quick-look webxr"
     environment-image="neutral"
     camera-controls
     xr-environment
@@ -172,75 +187,61 @@
     const arHint = document.getElementById('ar-hint');
     const surfaceMarker = document.getElementById('surface-marker');
     const loadingIndicator = document.getElementById('loading-indicator');
+    const compatibilityMessage = document.getElementById('compatibility-message');
+    
     let arSession = null;
     let hitTestSource = null;
     let lastDetectedPosition = null;
     let surfaceDetectionTimeout = null;
 
-    // Initialize data immediately
+    // Check AR availability
+    async function checkARSupport() {
+      try {
+        // Check for WebXR support
+        if (navigator.xr) {
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          return supported;
+        }
+        
+        // Check for iOS/Android AR support
+        if (modelViewer.canActivateAR) {
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('AR support check failed:', error);
+        return false;
+      }
+    }
+
+    // Initialize with static values
     function initializeData() {
-      document.getElementById('voltage').innerText = '46.5';
-      document.getElementById('current').innerText = '0.5';
-      document.getElementById('temperature').innerText = '34.2';
-      document.getElementById('soc').innerText = '92';
-      document.getElementById('soh').innerText = '96';
-      document.getElementById('speed').innerText = '0.1';
-      document.getElementById('range').innerText = '82';
-      document.getElementById('status').innerText = 'Connected';
+      // Values are already set in HTML for immediate display
+      setInterval(updateDummyData, 1500);
     }
 
     function updateDummyData() {
-      // Only update values that should change
       document.getElementById('current').innerText = (0.4 + Math.random() * 0.2).toFixed(1);
       document.getElementById('temperature').innerText = (32 + Math.random() * 3).toFixed(1);
     }
 
-    // Faster surface detection with timeout
-    async function onXRFrame(time, frame) {
-      if (!arSession || !hitTestSource) return;
-
+    // AR Session Management
+    async function startARSession() {
       try {
-        const hitTestResults = frame.getHitTestResults(hitTestSource);
-        
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0];
-          const pose = hit.getPose(modelViewer.xrWebglLayer.space);
-          
-          if (pose) {
-            const position = pose.transform.position;
-            lastDetectedPosition = position;
-            
-            // Show marker and hide loading
-            surfaceMarker.style.display = 'block';
-            loadingIndicator.style.display = 'none';
-            
-            // Auto-place after 1 second of detection
-            if (!surfaceDetectionTimeout) {
-              surfaceDetectionTimeout = setTimeout(() => {
-                placeModelAtDetectedPosition();
-              }, 1000);
-            }
-          }
+        // First try WebXR
+        if (navigator.xr) {
+          await startWebXRSession();
+        } 
+        // Fallback to model-viewer's AR
+        else if (modelViewer.canActivateAR) {
+          modelViewer.activateAR();
         } else {
-          surfaceMarker.style.display = 'none';
-          if (surfaceDetectionTimeout) {
-            clearTimeout(surfaceDetectionTimeout);
-            surfaceDetectionTimeout = null;
-          }
+          showCompatibilityMessage("AR not supported on this device");
         }
       } catch (error) {
-        console.error('Error during hit test:', error);
-      }
-      
-      session.requestAnimationFrame(onXRFrame);
-    }
-
-    function placeModelAtDetectedPosition() {
-      if (lastDetectedPosition) {
-        modelViewer.modelPosition = `${lastDetectedPosition.x} ${lastDetectedPosition.y} ${lastDetectedPosition.z}`;
-        modelViewer.modelIsVisible = true;
-        surfaceMarker.style.display = 'none';
-        surfaceDetectionTimeout = null;
+        console.error('AR session failed:', error);
+        showCompatibilityMessage("AR failed to start: " + error.message);
       }
     }
 
@@ -249,15 +250,14 @@
         loadingIndicator.style.display = 'block';
         
         const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test', 'dom-overlay'],
-          domOverlay: { root: document.body },
-          optionalFeatures: ['light-estimation']
+          requiredFeatures: ['local', 'hit-test'],
+          optionalFeatures: ['dom-overlay', 'light-estimation']
         });
         
         arSession = session;
         modelViewer.xrSession = session;
         
-        const referenceSpace = await session.requestReferenceSpace('viewer');
+        const referenceSpace = await session.requestReferenceSpace('local');
         hitTestSource = await session.requestHitTestSource({
           space: referenceSpace,
           entityTypes: ['plane']
@@ -270,39 +270,54 @@
         arHint.style.display = 'block';
         arButton.textContent = 'Exit AR';
         
-        session.addEventListener('end', () => {
-          arSession = null;
-          hitTestSource = null;
-          arHint.style.display = 'none';
-          surfaceMarker.style.display = 'none';
-          loadingIndicator.style.display = 'none';
-          arButton.textContent = 'View in AR';
-          if (surfaceDetectionTimeout) {
-            clearTimeout(surfaceDetectionTimeout);
-            surfaceDetectionTimeout = null;
-          }
-        });
+        session.addEventListener('end', cleanUpARSession);
       } catch (error) {
         console.error('WebXR session failed:', error);
         loadingIndicator.style.display = 'none';
-        arHint.textContent = 'AR not available: ' + error.message;
-        arHint.style.display = 'block';
+        // Fallback to model-viewer AR
+        modelViewer.activateAR();
       }
     }
 
+    function cleanUpARSession() {
+      arSession = null;
+      hitTestSource = null;
+      arHint.style.display = 'none';
+      surfaceMarker.style.display = 'none';
+      loadingIndicator.style.display = 'none';
+      arButton.textContent = 'View in AR';
+      if (surfaceDetectionTimeout) {
+        clearTimeout(surfaceDetectionTimeout);
+        surfaceDetectionTimeout = null;
+      }
+    }
+
+    function showCompatibilityMessage(message) {
+      compatibilityMessage.textContent = message;
+      compatibilityMessage.style.display = 'block';
+      setTimeout(() => {
+        compatibilityMessage.style.display = 'none';
+      }, 5000);
+    }
+
     // Initialize
-    initializeData();
-    setInterval(updateDummyData, 1500);
+    document.addEventListener('DOMContentLoaded', async () => {
+      initializeData();
+      
+      // Check AR support and enable/disable button accordingly
+      const arSupported = await checkARSupport();
+      if (!arSupported) {
+        arButton.disabled = true;
+        arButton.textContent = 'AR Not Available';
+        showCompatibilityMessage("Augmented Reality is not supported on this device/browser");
+      }
+    });
 
     arButton.addEventListener('click', async () => {
       if (arSession) {
         await arSession.end();
       } else {
-        if (navigator.xr) {
-          await startWebXRSession();
-        } else {
-          modelViewer.activateAR();
-        }
+        await startARSession();
       }
     });
 
@@ -310,9 +325,7 @@
       if (event.detail.status === 'session-started') {
         arHint.style.display = 'block';
       } else if (event.detail.status === 'not-presenting') {
-        arHint.style.display = 'none';
-        surfaceMarker.style.display = 'none';
-        loadingIndicator.style.display = 'none';
+        cleanUpARSession();
       }
       
       arButton.textContent = event.detail.status === 'not-presenting' 
@@ -324,13 +337,6 @@
       modelViewer.exposure = 1.2;
       modelViewer.shadowIntensity = 1.2;
       modelViewer.environmentIntensity = 1.1;
-    });
-
-    // Tap to place immediately
-    modelViewer.addEventListener('click', () => {
-      if (arSession && lastDetectedPosition) {
-        placeModelAtDetectedPosition();
-      }
     });
   </script>
 </body>
