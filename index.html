@@ -1,78 +1,125 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Motorev AR Toggle</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.2/aframe/build/aframe-ar.js"></script>
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: #000;
-      font-family: Arial, sans-serif;
-    }
-    #toggle-btn {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: orange;
-      color: black;
-      border: none;
-      border-radius: 5px;
-      padding: 10px 15px;
-      font-size: 14px;
-      z-index: 10;
-      cursor: pointer;
-    }
-  </style>
-</head>
-
-<body>
-  <button id="toggle-btn">Switch to AR</button>
-
-  <!-- Normal 3D Model View -->
-  <a-scene embedded id="normal-view">
-    <a-entity 
-      gltf-model="motorev.glb" 
-      position="0 1.5 -3" 
-      rotation="0 0 0" 
-      scale="1 1 1">
-    </a-entity>
-    <a-entity camera look-controls></a-entity>
-  </a-scene>
-
-  <!-- AR Marker View (hidden initially) -->
-  <a-scene embedded arjs="sourceType: webcam;" id="ar-view" style="display: none;">
-    <a-marker preset="hiro">
-      <a-entity 
-        gltf-model="motorev.glb" 
-        scale="0.1 0.1 0.1"
-        rotation="0 0 0"
-        position="0 0 0">
-      </a-entity>
-    </a-marker>
-    <a-entity camera></a-entity>
-  </a-scene>
-
-  <script>
-    const toggleBtn = document.getElementById('toggle-btn');
-    const normalView = document.getElementById('normal-view');
-    const arView = document.getElementById('ar-view');
-
-    toggleBtn.addEventListener('click', () => {
-      if (normalView.style.display !== 'none') {
-        normalView.style.display = 'none';
-        arView.style.display = 'block';
-        toggleBtn.innerText = 'Switch to 3D View';
-      } else {
-        arView.style.display = 'none';
-        normalView.style.display = 'block';
-        toggleBtn.innerText = 'Switch to AR';
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Motorev WebXR AR Placement</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <style>
+      body, html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #000;
+        font-family: Arial, sans-serif;
       }
-    });
-  </script>
-</body>
+      #enter-ar {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: orange;
+        border: none;
+        color: black;
+        font-size: 16px;
+        font-weight: bold;
+        padding: 12px 24px;
+        border-radius: 5px;
+        cursor: pointer;
+        z-index: 10;
+      }
+    </style>
+  </head>
+
+  <body>
+    <button id="enter-ar">Enter AR</button>
+
+    <script type="module">
+      import * as THREE from 'https://unpkg.com/three@0.151.3/build/three.module.js';
+      import { GLTFLoader } from 'https://unpkg.com/three@0.151.3/examples/jsm/loaders/GLTFLoader.js';
+      import { ARButton } from 'https://unpkg.com/three@0.151.3/examples/jsm/webxr/ARButton.js';
+
+      let camera, scene, renderer;
+      let controller;
+      let reticle;
+      let model;
+
+      init();
+
+      function init() {
+        // Scene & Camera
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera();
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.xr.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+        scene.add(light);
+
+        // Reticle
+        reticle = new THREE.Mesh(
+          new THREE.RingGeometry(0.1, 0.11, 32).rotateX(-Math.PI/2),
+          new THREE.MeshBasicMaterial({ color: 0xff8800 })
+        );
+        reticle.matrixAutoUpdate = false;
+        reticle.visible = false;
+        scene.add(reticle);
+
+        // Controller for tap placement
+        controller = renderer.xr.getController(0);
+        controller.addEventListener('select', onSelect);
+        scene.add(controller);
+
+        // Load model
+        const loader = new GLTFLoader();
+        loader.load('motorev.glb', function (gltf) {
+          model = gltf.scene;
+          model.scale.set(0.1, 0.1, 0.1); // Adjust scale as needed
+        }, undefined, function (error) {
+          console.error('Model loading error:', error);
+        });
+
+        // AR Button
+        document.getElementById('enter-ar').addEventListener('click', () => {
+          document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+          document.getElementById('enter-ar').style.display = 'none';
+        });
+
+        // Hit Test Setup
+        renderer.xr.addEventListener('sessionstart', () => {
+          renderer.xr.getSession().requestReferenceSpace('viewer').then((refSpace) => {
+            renderer.xr.getSession().requestHitTestSource({ space: refSpace }).then((source) => {
+              renderer.setAnimationLoop((timestamp, frame) => {
+                if (frame) {
+                  const referenceSpace = renderer.xr.getReferenceSpace();
+                  const hitTestResults = frame.getHitTestResults(source);
+                  if (hitTestResults.length > 0) {
+                    const hit = hitTestResults[0];
+                    const pose = hit.getPose(referenceSpace);
+                    reticle.visible = true;
+                    reticle.matrix.fromArray(pose.transform.matrix);
+                  } else {
+                    reticle.visible = false;
+                  }
+                }
+                renderer.render(scene, camera);
+              });
+            });
+          });
+        });
+      }
+
+      function onSelect() {
+        if (reticle.visible && model) {
+          const clone = model.clone();
+          clone.position.setFromMatrixPosition(reticle.matrix);
+          scene.add(clone);
+        }
+      }
+    </script>
+  </body>
 </html>
