@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Motorev 3D Viewer & AR</title>
+  <title>Motorev 3D Viewer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <style>
     body, html {
@@ -26,6 +26,7 @@
       border-radius: 5px;
       cursor: pointer;
       z-index: 10;
+      display: none; /* Hidden until model loads */
     }
     #loading {
       position: fixed;
@@ -35,11 +36,21 @@
       color: white;
       font-size: 18px;
     }
+    #error {
+      position: fixed;
+      top: 60%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: red;
+      font-size: 16px;
+      display: none;
+    }
   </style>
 </head>
 
 <body>
   <div id="loading">Loading 3D model...</div>
+  <div id="error"></div>
   <button id="enter-ar">Enter AR</button>
 
   <script type="module">
@@ -55,85 +66,129 @@
     init();
 
     function init() {
-      // Create normal 3D scene first
       setupNormalView();
-      
-      // Load the model
       loadModel();
-      
-      // Handle window resize
       window.addEventListener('resize', onWindowResize);
     }
 
     function setupNormalView() {
-      // Normal scene for 3D preview
       normalScene = new THREE.Scene();
-      normalCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      normalCamera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
       normalCamera.position.z = 3;
       
-      // Renderer for normal view
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
       
-      // Lighting for normal view
-      const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-      normalScene.add(light);
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(1, 1, 1);
+      // Improved lighting
+      const ambientLight = new THREE.AmbientLight(0x404040);
+      normalScene.add(ambientLight);
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(1, 1, 1).normalize();
       normalScene.add(directionalLight);
       
-      // Start animation loop for normal view
       animate();
     }
 
     function loadModel() {
       const loader = new GLTFLoader();
-      loader.load(
-        'motorev.glb', 
-        function (gltf) {
-          model = gltf.scene;
-          model.scale.set(1, 1, 1);
-          
-          // Add to normal scene for preview
-          normalScene.add(model.clone());
-          
-          document.getElementById('loading').style.display = 'none';
-          
-          // Set up AR button
-          document.getElementById('enter-ar').addEventListener('click', enterAR);
-        },
-        function (xhr) {
-          console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-        },
-        function (error) {
-          console.error('Error loading model:', error);
-          document.getElementById('loading').textContent = 'Error loading model';
-        }
-      );
+      
+      // Try multiple possible paths
+      const modelPaths = [
+        'motorev.glb',
+        './motorev.glb',
+        '/motorev.glb'
+      ];
+      
+      let attempts = 0;
+      
+      function tryLoad(path) {
+        loader.load(
+          path,
+          function(gltf) {
+            console.log('Model successfully loaded from:', path);
+            modelLoaded(gltf);
+          },
+          function(xhr) {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded from ' + path);
+          },
+          function(error) {
+            console.error('Failed to load from', path, error);
+            attempts++;
+            if (attempts < modelPaths.length) {
+              tryLoad(modelPaths[attempts]);
+            } else {
+              showError("Failed to load model. Please check:<br>" +
+                        "1. File exists and is named 'motorev.glb'<br>" +
+                        "2. File is in the same folder as this page<br>" +
+                        "3. You're using a local server (see console for details)");
+            }
+          }
+        );
+      }
+      
+      tryLoad(modelPaths[0]);
+    }
+
+    function modelLoaded(gltf) {
+      model = gltf.scene;
+      model.scale.set(1, 1, 1);
+      
+      // Center the model
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      model.position.sub(center);
+      
+      normalScene.add(model);
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('enter-ar').style.display = 'block';
+      document.getElementById('enter-ar').addEventListener('click', enterAR);
+    }
+
+    function showError(message) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').innerHTML = message;
+      document.getElementById('error').style.display = 'block';
+      console.error(message);
+    }
+
+    // ... [rest of your existing code for AR functions, animate(), etc.] ...
+
+    function animate() {
+      if (!arMode && model) {
+        model.rotation.y += 0.01;
+        renderer.render(normalScene, normalCamera);
+        requestAnimationFrame(animate);
+      }
+    }
+
+    function onWindowResize() {
+      if (arMode && camera) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+      } else if (normalCamera) {
+        normalCamera.aspect = window.innerWidth / window.innerHeight;
+        normalCamera.updateProjectionMatrix();
+      }
+      renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     function enterAR() {
       arMode = true;
-      
-      // Remove normal view elements
       document.getElementById('enter-ar').style.display = 'none';
       
-      // Set up XR
       renderer.xr.enabled = true;
       document.body.appendChild(ARButton.createButton(renderer, { 
         requiredFeatures: ['hit-test'] 
       }));
       
-      // Create AR scene
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera();
       
-      // Lighting for AR
       const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
       scene.add(light);
       
-      // Reticle for plane placement
       reticle = new THREE.Mesh(
         new THREE.RingGeometry(0.1, 0.11, 32).rotateX(-Math.PI/2),
         new THREE.MeshBasicMaterial({ color: 0xff8800 })
@@ -142,12 +197,10 @@
       reticle.visible = false;
       scene.add(reticle);
       
-      // Controller for tap placement
       controller = renderer.xr.getController(0);
       controller.addEventListener('select', onSelect);
       scene.add(controller);
       
-      // Hit Test Setup
       renderer.xr.addEventListener('sessionstart', () => {
         renderer.xr.getSession().requestReferenceSpace('viewer').then((refSpace) => {
           renderer.xr.getSession().requestHitTestSource({ space: refSpace }).then((source) => {
@@ -170,11 +223,10 @@
         });
       });
       
-      // Handle session end
       renderer.xr.addEventListener('sessionend', () => {
         arMode = false;
         document.getElementById('enter-ar').style.display = 'block';
-        renderer.setAnimationLoop(animate); // Return to normal animation loop
+        renderer.setAnimationLoop(animate);
       });
     }
 
@@ -184,28 +236,6 @@
         clone.position.setFromMatrixPosition(reticle.matrix);
         scene.add(clone);
       }
-    }
-
-    function animate() {
-      if (!arMode) {
-        // Rotate model slowly in normal view
-        if (model) {
-          model.rotation.y += 0.01;
-        }
-        renderer.render(normalScene, normalCamera);
-        requestAnimationFrame(animate);
-      }
-    }
-
-    function onWindowResize() {
-      if (arMode) {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-      } else {
-        normalCamera.aspect = window.innerWidth / window.innerHeight;
-        normalCamera.updateProjectionMatrix();
-      }
-      renderer.setSize(window.innerWidth, window.innerHeight);
     }
   </script>
 </body>
