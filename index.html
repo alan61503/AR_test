@@ -3,16 +3,13 @@
 <head>
     <meta charset="utf-8">
     <title>Motorev AR Viewer</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.2/aframe/build/aframe-ar.js"></script>
     <style>
         body {
             margin: 0;
-            padding: 0;
             overflow: hidden;
-            background-color: #000;
-            font-family: Arial, sans-serif;
+            background: #000;
         }
         .data-panel {
             position: fixed;
@@ -25,13 +22,9 @@
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 8px;
-            z-index: 100;
             color: orange;
-            border: 1px solid rgba(255,165,0,0.3);
-        }
-        .data-item {
-            font-size: 14px;
-            font-weight: bold;
+            font-family: Arial;
+            z-index: 100;
         }
         .marker-hint {
             position: fixed;
@@ -42,77 +35,80 @@
             color: white;
             padding: 10px 20px;
             border-radius: 20px;
-            font-size: 14px;
-            z-index: 100;
             text-align: center;
         }
     </style>
 </head>
 <body>
-    <!-- Data Panel -->
     <div class="data-panel">
-        <div class="data-item">Voltage: <span id="voltage">-- V</span></div>
-        <div class="data-item">Current: <span id="current">-- A</span></div>
-        <div class="data-item">Temp: <span id="temperature">-- °C</span></div>
-        <div class="data-item">SOC: <span id="soc">-- %</span></div>
-        <div class="data-item">SOH: <span id="soh">-- %</span></div>
-        <div class="data-item">Speed: <span id="speed">-- km/h</span></div>
-        <div class="data-item">Range: <span id="range">-- km</span></div>
-        <div class="data-item">Status: <span id="status">Scanning...</span></div>
+        <div>Voltage: <span id="voltage">46.7 V</span></div>
+        <div>Current: <span id="current">0.6 A</span></div>
+        <div>Temp: <span id="temperature">93.7 °C</span></div>
+        <div>SOC: <span id="soc">85.6 %</span></div>
+        <div>SOH: <span id="soh">95.3 %</span></div>
+        <div>Speed: <span id="speed">0.1 km/h</span></div>
+        <div>Range: <span id="range">81.0 km</span></div>
+        <div>Status: <span id="status">Connected</span></div>
     </div>
 
-    <!-- Marker Hint -->
-    <div class="marker-hint">
-        Point camera at Hiro marker
-    </div>
+    <div class="marker-hint" id="hint">Point camera at Hiro marker</div>
 
-    <!-- AR Scene -->
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-        <!-- Hiro Marker -->
+    <a-scene 
+        embedded 
+        arjs="sourceType: webcam; debugUIEnabled: false;"
+        renderer="logarithmicDepthBuffer: true;"
+    >
+        <!-- Main marker with 3D model -->
         <a-marker preset="hiro">
-            <!-- 3D Model - replace with your path -->
             <a-entity 
                 gltf-model="url(motorev.glb)"
                 scale="0.1 0.1 0.1"
                 position="0 0 0"
-                rotation="0 0 0">
-            </a-entity>
+            ></a-entity>
         </a-marker>
+        
+        <!-- Fallback primitive (visible if model fails) -->
+        <a-marker preset="hiro">
+            <a-box position="0 0.5 0" color="red" scale="0.5 0.5 0.5"></a-box>
+        </a-marker>
+
         <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-        // Update dummy data
-        function getRandom(min, max) {
-            return (Math.random() * (max - min) + min).toFixed(1);
-        }
-
+        // Update data values
         function updateData() {
-            document.getElementById('voltage').textContent = getRandom(46, 48) + ' V';
-            document.getElementById('current').textContent = getRandom(0.4, 0.6) + ' A';
-            document.getElementById('temperature').textContent = getRandom(32, 36) + ' °C';
-            document.getElementById('soc').textContent = getRandom(85, 95) + ' %';
-            document.getElementById('soh').textContent = getRandom(95, 98) + ' %';
-            document.getElementById('speed').textContent = getRandom(0, 0.2) + ' km/h';
-            document.getElementById('range').textContent = getRandom(75, 85) + ' km';
-            document.getElementById('status').textContent = "Connected";
+            const elements = {
+                voltage: { min: 46, max: 48, unit: 'V' },
+                current: { min: 0.4, max: 0.7, unit: 'A' },
+                temperature: { min: 90, max: 95, unit: '°C' },
+                soc: { min: 80, max: 90, unit: '%' },
+                soh: { min: 95, max: 97, unit: '%' },
+                speed: { min: 0, max: 0.2, unit: 'km/h' },
+                range: { min: 80, max: 85, unit: 'km' }
+            };
+
+            Object.entries(elements).forEach(([id, config]) => {
+                const value = (Math.random() * (config.max - config.min) + config.min).toFixed(1);
+                document.getElementById(id).textContent = `${value} ${config.unit}`;
+            });
         }
 
-        // Initial update and set interval
-        updateData();
-        setInterval(updateData, 1500);
-
-        // Hide hint when marker is detected
+        // Handle marker detection
         const scene = document.querySelector('a-scene');
         scene.addEventListener('markerFound', () => {
-            document.querySelector('.marker-hint').style.display = 'none';
+            document.getElementById('hint').style.display = 'none';
             document.getElementById('status').textContent = "Marker Found";
         });
 
         scene.addEventListener('markerLost', () => {
-            document.querySelector('.marker-hint').style.display = 'block';
+            document.getElementById('hint').style.display = 'block';
             document.getElementById('status').textContent = "Scanning...";
         });
+
+        // Initial data update
+        updateData();
+        setInterval(updateData, 1500);
     </script>
 </body>
 </html>
