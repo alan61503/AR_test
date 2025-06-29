@@ -1,222 +1,331 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Motorev 3D AR Viewer</title>
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #000;
-      color: white;
-    }
-    model-viewer {
-      width: 100vw;
-      height: 100vh;
-      background-color: #222;
-    }
-    .ar-button {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: orange;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 30px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      z-index: 100;
-    }
-    .data-panel {
-      position: fixed;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      background-color: rgba(0,0,0,0.7);
-      border-radius: 15px;
-      padding: 15px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      backdrop-filter: blur(5px);
-      z-index: 10;
-      border: 1px solid rgba(255,165,0,0.3);
-    }
-    .data-item {
-      display: flex;
-      flex-direction: column;
-    }
-    .data-label {
-      font-size: 12px;
-      color: #aaa;
-      margin-bottom: 2px;
-    }
-    .data-value {
-      font-size: 16px;
-      font-weight: bold;
-      color: orange;
-    }
-    .unit {
-      font-size: 12px;
-      color: #aaa;
-      margin-left: 2px;
-    }
-    .compatibility-message {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: rgba(0,0,0,0.8);
-      color: white;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
-      max-width: 80%;
-      z-index: 1000;
-    }
-    .ar-message {
-      position: fixed;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: rgba(0,0,0,0.7);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 20px;
-      font-size: 14px;
-      text-align: center;
-      max-width: 80%;
-      z-index: 90;
-      display: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motorev AR Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: white;
+        }
+        #ar-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #arjs-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #arjs-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .data-panel {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            background-color: rgba(0,0,0,0.7);
+            border-radius: 15px;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+            border: 1px solid rgba(255,165,0,0.3);
+        }
+        .data-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .data-label {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 2px;
+        }
+        .data-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: orange;
+        }
+        .unit {
+            font-size: 12px;
+            color: #aaa;
+            margin-left: 2px;
+        }
+        .marker-info {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            text-align: center;
+            max-width: 80%;
+            z-index: 90;
+        }
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: orange;
+            font-size: 18px;
+            z-index: 100;
+        }
+    </style>
 </head>
 <body>
+    <div id="ar-container">
+        <!-- Video stream will be inserted here -->
+        <div class="loading" id="loading">Initializing AR...</div>
+        <div class="marker-info" id="marker-info">Point camera at AR marker</div>
+    </div>
 
-  <div class="data-panel" id="data-panel">
-    <div class="data-item">
-      <span class="data-label">Voltage</span>
-      <span class="data-value"><span id="voltage">46.5</span><span class="unit">V</span></span>
+    <div class="data-panel" id="data-panel">
+        <div class="data-item">
+            <span class="data-label">Voltage</span>
+            <span class="data-value"><span id="voltage">46.5</span><span class="unit">V</span></span>
+        </div>
+        <div class="data-item">
+            <span class="data-label">Current</span>
+            <span class="data-value"><span id="current">0.5</span><span class="unit">A</span></span>
+        </div>
+        <div class="data-item">
+            <span class="data-label">Temperature</span>
+            <span class="data-value"><span id="temperature">34.2</span><span class="unit">°C</span></span>
+        </div>
+        <div class="data-item">
+            <span class="data-label">State of Charge</span>
+            <span class="data-value"><span id="soc">92</span><span class="unit">%</span></span>
+        </div>
+        <div class="data-item">
+            <span class="data-label">State of Health</span>
+            <span class="data-value"><span id="soh">96</span><span class="unit">%</span></span>
+        </div>
+        <div class="data-item">
+            <span class="data-label">Speed</span>
+            <span class="data-value"><span id="speed">0.1</span><span class="unit">km/h</span></span>
+        </div>
+        <div class="data-item">
+            <span class="data-label">Range</span>
+            <span class="data-value"><span id="range">82</span><span class="unit">km</span></span>
+        </div>
+        <div class="data-item">
+            <span class="data-label">Status</span>
+            <span class="data-value"><span id="status">Searching</span></span>
+        </div>
     </div>
-    <div class="data-item">
-      <span class="data-label">Current</span>
-      <span class="data-value"><span id="current">0.5</span><span class="unit">A</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Temperature</span>
-      <span class="data-value"><span id="temperature">34.2</span><span class="unit">°C</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Charge</span>
-      <span class="data-value"><span id="soc">92</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Health</span>
-      <span class="data-value"><span id="soh">96</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Speed</span>
-      <span class="data-value"><span id="speed">0.1</span><span class="unit">km/h</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Range</span>
-      <span class="data-value"><span id="range">82</span><span class="unit">km</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Status</span>
-      <span class="data-value"><span id="status">Connected</span></span>
-    </div>
-  </div>
 
-  <div class="compatibility-message" id="compatibility-message" style="display: none;"></div>
-  <div class="ar-message" id="ar-message"></div>
+    <!-- Include required libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ar-js-org/ar.js@3.4.0/dist/ar.js"></script>
 
-  <model-viewer 
-    src="motorev.glb"
-    alt="Motorev 3D Model"
-    ar
-    ar-modes="webxr scene-viewer quick-look"
-    camera-controls
-    environment-image="neutral"
-    shadow-intensity="1"
-    exposure="1.0"
-    interaction-prompt="none"
-    ar-scale="auto"
-    ar-placement="floor"
-    xr-environment>
-    <button slot="ar-button" class="ar-button">View in AR</button>
-  </model-viewer>
+    <script>
+        // Global variables
+        let scene, camera, renderer, controller, model;
+        let markerFound = false;
+        let dummyDataInterval;
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const modelViewer = document.querySelector('model-viewer');
-      const compatibilityMessage = document.getElementById('compatibility-message');
-      const dataPanel = document.getElementById('data-panel');
-      const arMessage = document.getElementById('ar-message');
-      
-      // Check AR compatibility
-      async function checkARSupport() {
-        try {
-          const isSupported = await modelViewer.isSupported;
-          if (!isSupported) {
-            compatibilityMessage.textContent = 'AR is not supported on your device. Try using Chrome on Android or Safari on iOS.';
-            compatibilityMessage.style.display = 'block';
-          }
-        } catch (error) {
-          console.error('AR support check failed:', error);
-          compatibilityMessage.textContent = 'Error checking AR support. Please try again later.';
-          compatibilityMessage.style.display = 'block';
+        // Initialize AR scene
+        function init() {
+            // 1. Create a scene
+            scene = new THREE.Scene();
+            
+            // 2. Create a camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // 3. Create a renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('ar-container').appendChild(renderer.domElement);
+            
+            // 4. Add lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+            
+            // 5. Initialize AR.js
+            initAR();
+            
+            // 6. Start updating data
+            startDataUpdates();
+            
+            // 7. Handle window resize
+            window.addEventListener('resize', onWindowResize);
         }
-      }
-      
-      // Update data values
-      function updateData() {
-        // Generate realistic random values
-        const voltage = (46 + Math.random() * 2).toFixed(1);
-        const current = (Math.random() * 5).toFixed(1);
-        const temperature = (30 + Math.random() * 15).toFixed(1);
-        const soc = (90 + Math.random() * 10).toFixed(0);
-        const soh = (95 + Math.random() * 5).toFixed(0);
-        const speed = (Math.random() * 5).toFixed(1);
-        const range = (80 + Math.random() * 40).toFixed(0);
         
-        // Update all values
-        document.getElementById('voltage').textContent = voltage;
-        document.getElementById('current').textContent = current;
-        document.getElementById('temperature').textContent = temperature;
-        document.getElementById('soc').textContent = soc;
-        document.getElementById('soh').textContent = soh;
-        document.getElementById('speed').textContent = speed;
-        document.getElementById('range').textContent = range;
-      }
-      
-      // AR status handling
-      modelViewer.addEventListener('ar-status', (event) => {
-        console.log('AR Status:', event.detail.status);
-        
-        if (event.detail.status === 'session-started') {
-          arMessage.textContent = 'Point your camera at a flat surface to place the model';
-          arMessage.style.display = 'block';
-          setTimeout(() => {
-            arMessage.style.display = 'none';
-          }, 5000);
-        } else if (event.detail.status === 'session-ended') {
-          arMessage.style.display = 'none';
+        // Initialize AR.js
+        function initAR() {
+            // Create AR controller
+            controller = new THREEx.ArToolkitSource({
+                sourceType: 'webcam',
+                displayWidth: window.innerWidth,
+                displayHeight: window.innerHeight
+            });
+            
+            // Initialize AR controller
+            controller.init(() => {
+                document.getElementById('loading').style.display = 'none';
+                
+                // Create AR context
+                const arContext = new THREEx.ArToolkitContext({
+                    cameraParametersUrl: 'https://arjs-cors-proxy.herokuapp.com/https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/camera_para.dat',
+                    detectionMode: 'mono',
+                    maxDetectionRate: 60,
+                    canvasWidth: controller.parameters.sourceWidth,
+                    canvasHeight: controller.parameters.sourceHeight
+                });
+                
+                // Initialize AR context
+                arContext.init(() => {
+                    // Update projection matrix when AR context is ready
+                    camera.projectionMatrix.copy(arContext.getProjectionMatrix());
+                    
+                    // Create marker controls
+                    const markerControls = new THREEx.ArMarkerControls(arContext, camera, {
+                        type: 'pattern',
+                        patternUrl: 'https://arjs-cors-proxy.herokuapp.com/https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/hiro.patt',
+                        changeMatrixMode: 'cameraTransformMatrix'
+                    });
+                    
+                    // Load 3D model
+                    loadModel();
+                    
+                    // Marker found event
+                    markerControls.addEventListener('markerFound', () => {
+                        markerFound = true;
+                        document.getElementById('marker-info').style.display = 'none';
+                        document.getElementById('status').textContent = 'Connected';
+                    });
+                    
+                    // Marker lost event
+                    markerControls.addEventListener('markerLost', () => {
+                        markerFound = false;
+                        document.getElementById('marker-info').style.display = 'block';
+                        document.getElementById('status').textContent = 'Searching';
+                    });
+                    
+                    // Start rendering
+                    animate();
+                });
+            });
         }
-      });
-      
-      // Initialize
-      checkARSupport();
-      updateData();
-      setInterval(updateData, 1000);
-    });
-  </script>
+        
+        // Load 3D model
+        function loadModel() {
+            const loader = new THREE.GLTFLoader();
+            
+            // Replace with your actual model URL
+            loader.load(
+                'motorev.glb',
+                (gltf) => {
+                    model = gltf.scene;
+                    model.scale.set(0.1, 0.1, 0.1);
+                    model.position.set(0, 0, 0);
+                    scene.add(model);
+                },
+                undefined,
+                (error) => {
+                    console.error('Error loading model:', error);
+                }
+            );
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update AR scene
+            if (controller.ready) {
+                const video = controller.domElement;
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    const videoAspect = video.videoWidth / video.videoHeight;
+                    const windowAspect = window.innerWidth / window.innerHeight;
+                    
+                    if (windowAspect > videoAspect) {
+                        // Window is wider than video
+                        const scale = window.innerWidth / video.videoWidth;
+                        const height = video.videoHeight * scale;
+                        video.style.height = `${height}px`;
+                        video.style.width = `${window.innerWidth}px`;
+                        video.style.top = `${(window.innerHeight - height) / 2}px`;
+                        video.style.left = '0px';
+                    } else {
+                        // Window is taller than video
+                        const scale = window.innerHeight / video.videoHeight;
+                        const width = video.videoWidth * scale;
+                        video.style.width = `${width}px`;
+                        video.style.height = `${window.innerHeight}px`;
+                        video.style.left = `${(window.innerWidth - width) / 2}px`;
+                        video.style.top = '0px';
+                    }
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            if (controller) {
+                controller.onResizeElement();
+            }
+        }
+        
+        // Update data values
+        function updateData() {
+            // Generate realistic random values
+            const voltage = (46 + Math.random() * 2).toFixed(1);
+            const current = (Math.random() * 5).toFixed(1);
+            const temperature = (30 + Math.random() * 15).toFixed(1);
+            const soc = (90 + Math.random() * 10).toFixed(0);
+            const soh = (95 + Math.random() * 5).toFixed(0);
+            const speed = markerFound ? (Math.random() * 5).toFixed(1) : '0.0';
+            const range = (80 + Math.random() * 40).toFixed(0);
+            
+            // Update all values
+            document.getElementById('voltage').textContent = voltage;
+            document.getElementById('current').textContent = current;
+            document.getElementById('temperature').textContent = temperature;
+            document.getElementById('soc').textContent = soc;
+            document.getElementById('soh').textContent = soh;
+            document.getElementById('speed').textContent = speed;
+            document.getElementById('range').textContent = range;
+        }
+        
+        // Start data updates
+        function startDataUpdates() {
+            updateData();
+            dummyDataInterval = setInterval(updateData, 1000);
+        }
+        
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
 </body>
 </html>
