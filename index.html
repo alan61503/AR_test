@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Motorev Markerless AR</title>
+  <title>Motorev 3D Viewer & AR</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <style>
     body, html {
@@ -27,10 +27,19 @@
       cursor: pointer;
       z-index: 10;
     }
+    #loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 18px;
+    }
   </style>
 </head>
 
 <body>
+  <div id="loading">Loading 3D model...</div>
   <button id="enter-ar">Enter AR</button>
 
   <script type="module">
@@ -39,27 +48,91 @@
     import { ARButton } from 'https://unpkg.com/three@0.151.3/examples/jsm/webxr/ARButton.js';
 
     let camera, scene, renderer;
-    let controller;
-    let reticle;
-    let model;
+    let controller, reticle;
+    let model, arMode = false;
+    let normalCamera, normalScene;
 
     init();
 
     function init() {
-      // Scene & Camera
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera();
+      // Create normal 3D scene first
+      setupNormalView();
+      
+      // Load the model
+      loadModel();
+      
+      // Handle window resize
+      window.addEventListener('resize', onWindowResize);
+    }
 
-      // Renderer
+    function setupNormalView() {
+      // Normal scene for 3D preview
+      normalScene = new THREE.Scene();
+      normalCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      normalCamera.position.z = 3;
+      
+      // Renderer for normal view
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.xr.enabled = true;
       document.body.appendChild(renderer.domElement);
+      
+      // Lighting for normal view
+      const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+      normalScene.add(light);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(1, 1, 1);
+      normalScene.add(directionalLight);
+      
+      // Start animation loop for normal view
+      animate();
+    }
 
-      // Lighting
+    function loadModel() {
+      const loader = new GLTFLoader();
+      loader.load(
+        'motorev.glb', 
+        function (gltf) {
+          model = gltf.scene;
+          model.scale.set(1, 1, 1);
+          
+          // Add to normal scene for preview
+          normalScene.add(model.clone());
+          
+          document.getElementById('loading').style.display = 'none';
+          
+          // Set up AR button
+          document.getElementById('enter-ar').addEventListener('click', enterAR);
+        },
+        function (xhr) {
+          console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        function (error) {
+          console.error('Error loading model:', error);
+          document.getElementById('loading').textContent = 'Error loading model';
+        }
+      );
+    }
+
+    function enterAR() {
+      arMode = true;
+      
+      // Remove normal view elements
+      document.getElementById('enter-ar').style.display = 'none';
+      
+      // Set up XR
+      renderer.xr.enabled = true;
+      document.body.appendChild(ARButton.createButton(renderer, { 
+        requiredFeatures: ['hit-test'] 
+      }));
+      
+      // Create AR scene
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera();
+      
+      // Lighting for AR
       const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
       scene.add(light);
-
+      
       // Reticle for plane placement
       reticle = new THREE.Mesh(
         new THREE.RingGeometry(0.1, 0.11, 32).rotateX(-Math.PI/2),
@@ -68,27 +141,12 @@
       reticle.matrixAutoUpdate = false;
       reticle.visible = false;
       scene.add(reticle);
-
+      
       // Controller for tap placement
       controller = renderer.xr.getController(0);
       controller.addEventListener('select', onSelect);
       scene.add(controller);
-
-      // Load GLB model
-      const loader = new GLTFLoader();
-      loader.load('motorev.glb', function (gltf) {
-        model = gltf.scene;
-        model.scale.set(0.1, 0.1, 0.1); // Adjust scale as needed
-      }, undefined, function (error) {
-        console.error('Model loading error:', error);
-      });
-
-      // Enter AR Button
-      document.getElementById('enter-ar').addEventListener('click', () => {
-        document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
-        document.getElementById('enter-ar').style.display = 'none';
-      });
-
+      
       // Hit Test Setup
       renderer.xr.addEventListener('sessionstart', () => {
         renderer.xr.getSession().requestReferenceSpace('viewer').then((refSpace) => {
@@ -111,6 +169,13 @@
           });
         });
       });
+      
+      // Handle session end
+      renderer.xr.addEventListener('sessionend', () => {
+        arMode = false;
+        document.getElementById('enter-ar').style.display = 'block';
+        renderer.setAnimationLoop(animate); // Return to normal animation loop
+      });
     }
 
     function onSelect() {
@@ -119,6 +184,28 @@
         clone.position.setFromMatrixPosition(reticle.matrix);
         scene.add(clone);
       }
+    }
+
+    function animate() {
+      if (!arMode) {
+        // Rotate model slowly in normal view
+        if (model) {
+          model.rotation.y += 0.01;
+        }
+        renderer.render(normalScene, normalCamera);
+        requestAnimationFrame(animate);
+      }
+    }
+
+    function onWindowResize() {
+      if (arMode) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+      } else {
+        normalCamera.aspect = window.innerWidth / window.innerHeight;
+        normalCamera.updateProjectionMatrix();
+      }
+      renderer.setSize(window.innerWidth, window.innerHeight);
     }
   </script>
 </body>
