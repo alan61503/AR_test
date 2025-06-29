@@ -1,327 +1,259 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Motorev AR Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Motorev 3D AR Viewer</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <style>
-    body, html {
+    body {
+      font-family: 'Arial', sans-serif;
       margin: 0;
       padding: 0;
-      overflow: hidden;
-      background: #000;
-      font-family: Arial, sans-serif;
+      background-color: #000;
+      color: white;
+      touch-action: manipulation;
     }
-    #enter-ar {
+    model-viewer {
+      width: 100vw;
+      height: 100vh;
+      background-color: #222;
+    }
+    model-viewer[ar] {
+      background-color: transparent;
+    }
+    .ar-button {
       position: fixed;
-      bottom: 20px;
+      bottom: 70px;
       left: 50%;
       transform: translateX(-50%);
-      background: orange;
+      background-color: orange;
+      color: white;
       border: none;
-      color: black;
+      padding: 12px 24px;
+      border-radius: 30px;
+      cursor: pointer;
       font-size: 16px;
       font-weight: bold;
-      padding: 12px 24px;
-      border-radius: 5px;
-      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      z-index: 100;
+    }
+    .data-panel {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      background-color: rgba(0,0,0,0.7);
+      border-radius: 15px;
+      padding: 15px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      backdrop-filter: blur(5px);
       z-index: 10;
+      border: 1px solid rgba(255,165,0,0.3);
+    }
+    .data-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .data-label {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 2px;
+    }
+    .data-value {
+      font-size: 16px;
+      font-weight: bold;
+      color: orange;
+    }
+    .unit {
+      font-size: 12px;
+      color: #aaa;
+      margin-left: 2px;
+    }
+    .ar-hint {
+      position: fixed;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0,0,0,0.7);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      text-align: center;
+      max-width: 80%;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255,255,255,0.2);
+      z-index: 90;
       display: none;
     }
-    #loading {
+    .surface-marker {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border: 2px dashed rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 5;
+      display: none;
+    }
+    .loading-indicator {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      color: white;
+      color: orange;
       font-size: 18px;
-      text-align: center;
-    }
-    #error {
-      position: fixed;
-      top: 60%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: red;
-      font-size: 16px;
-      text-align: center;
-      max-width: 90%;
+      z-index: 1000;
       display: none;
     }
-    #progress {
-      width: 200px;
-      height: 20px;
-      border: 1px solid white;
-      margin: 10px auto;
+    .compatibility-message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      max-width: 80%;
+      display: none;
+      z-index: 1000;
     }
-    #progress-bar {
-      height: 100%;
-      width: 0%;
-      background: orange;
+    .ar-data-panel {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      background-color: rgba(0,0,0,0.7);
+      border-radius: 15px;
+      padding: 15px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      backdrop-filter: blur(5px);
+      z-index: 10;
+      border: 1px solid rgba(255,165,0,0.3);
+      display: none;
     }
   </style>
 </head>
 <body>
-  <div id="loading">
-    Loading 3D model...
-    <div id="progress"><div id="progress-bar"></div></div>
+
+  <div class="data-panel" id="data-panel">
+    <div class="data-item">
+      <span class="data-label">Voltage</span>
+      <span class="data-value"><span id="voltage">46.5</span><span class="unit">V</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Current</span>
+      <span class="data-value"><span id="current">0.5</span><span class="unit">A</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Temperature</span>
+      <span class="data-value"><span id="temperature">34.2</span><span class="unit">°C</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">State of Charge</span>
+      <span class="data-value"><span id="soc">92</span><span class="unit">%</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">State of Health</span>
+      <span class="data-value"><span id="soh">96</span><span class="unit">%</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Speed</span>
+      <span class="data-value"><span id="speed">0.1</span><span class="unit">km/h</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Range</span>
+      <span class="data-value"><span id="range">82</span><span class="unit">km</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Status</span>
+      <span class="data-value"><span id="status">Connected</span></span>
+    </div>
   </div>
-  <div id="error"></div>
-  <button id="enter-ar">Enter AR</button>
 
-  <script type="module">
-    import * as THREE from 'https://unpkg.com/three@0.151.3/build/three.module.js';
-    import { GLTFLoader } from 'https://unpkg.com/three@0.151.3/examples/jsm/loaders/GLTFLoader.js';
-    import { ARButton } from 'https://unpkg.com/three@0.151.3/examples/jsm/webxr/ARButton.js';
+  <div class="ar-data-panel" id="ar-data-panel">
+    <div class="data-item">
+      <span class="data-label">Voltage</span>
+      <span class="data-value"><span id="ar-voltage">46.5</span><span class="unit">V</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Current</span>
+      <span class="data-value"><span id="ar-current">0.5</span><span class="unit">A</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Temperature</span>
+      <span class="data-value"><span id="ar-temperature">34.2</span><span class="unit">°C</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">State of Charge</span>
+      <span class="data-value"><span id="ar-soc">92</span><span class="unit">%</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">State of Health</span>
+      <span class="data-value"><span id="ar-soh">96</span><span class="unit">%</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Speed</span>
+      <span class="data-value"><span id="ar-speed">0.1</span><span class="unit">km/h</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Range</span>
+      <span class="data-value"><span id="ar-range">82</span><span class="unit">km</span></span>
+    </div>
+    <div class="data-item">
+      <span class="data-label">Status</span>
+      <span class="data-value"><span id="ar-status">Connected</span></span>
+    </div>
+  </div>
 
-    // Configuration specific to your repository
-    const CONFIG = {
-      modelName: 'motorev.glb',
-      githubRepo: 'Ujwal1811/AR_test', // Your actual repo
-      scale: 1.0,
-      rotationSpeed: 0.01
-    };
+  <div class="ar-hint" id="ar-hint">
+    Point your camera at any flat surface to place the model
+  </div>
 
-    // State
-    let camera, scene, renderer;
-    let controller, reticle;
-    let model, arMode = false;
-    let normalCamera, normalScene;
+  <div class="surface-marker" id="surface-marker"></div>
+  <div class="loading-indicator" id="loading-indicator">Detecting surface...</div>
+  <div class="compatibility-message" id="compatibility-message"></div>
 
-    init();
+  <model-viewer 
+    src="motorev.glb"
+    alt="Motorev 3D Model"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    environment-image="neutral"
+    camera-controls
+    xr-environment
+    shadow-intensity="1"
+    quick-look-browsers="safari chrome"
+    ar-scale="fixed"
+    ar-placement="floor">
+    <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
+  </model-viewer>
 
-    function init() {
-      setupNormalView();
-      attemptModelLoad();
-      window.addEventListener('resize', onWindowResize);
-    }
+  <script>
+    const modelViewer = document.querySelector('model-viewer');
+    const arButton = document.getElementById('ar-button');
+    const arHint = document.getElementById('ar-hint');
+    const surfaceMarker = document.getElementById('surface-marker');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const compatibilityMessage = document.getElementById('compatibility-message');
+    const dataPanel = document.getElementById('data-panel');
+    const arDataPanel = document.getElementById('ar-data-panel');
+    
+    let arSession = null;
+    let hitTestSource = null;
+    let lastDetectedPosition = null;
+    let surfaceDetectionTimeout = null;
+    let dummyDataInterval = null;
 
-    function setupNormalView() {
-      normalScene = new THREE.Scene();
-      normalCamera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-      normalCamera.position.z = 3;
-      
-      renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: true,
-        powerPreference: "high-performance"
-      });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
-      document.body.appendChild(renderer.domElement);
-      
-      // Enhanced lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      normalScene.add(ambientLight);
-      
-      const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight1.position.set(1, 1, 1).normalize();
-      normalScene.add(directionalLight1);
-      
-      const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
-      directionalLight2.position.set(-1, -1, -1).normalize();
-      normalScene.add(directionalLight2);
-      
-      animate();
-    }
-
-    function attemptModelLoad() {
-      const loader = new GLTFLoader();
-      
-      // All possible paths for your specific repository
-      const modelPaths = [
-        // Relative path (works when testing locally)
-        CONFIG.modelName,
-        
-        // GitHub Pages path
-        `https://ujwal1811.github.io/AR_test/${CONFIG.modelName}`,
-        
-        // Raw GitHub content path (main branch)
-        `https://raw.githubusercontent.com/Ujwal1811/AR_test/main/${CONFIG.modelName}`,
-        
-        // Fallback path
-        `https://ujwal1811.github.io/${CONFIG.modelName}`
-      ];
-
-      let currentAttempt = 0;
-      
-      function tryLoad() {
-        if (currentAttempt >= modelPaths.length) {
-          showError(`
-            Failed to load model after ${modelPaths.length} attempts.<br><br>
-            Please verify:<br>
-            1. The file '${CONFIG.modelName}' exists in your repository<br>
-            2. The filename is exactly 'motorev.glb' (case-sensitive)<br>
-            3. You've committed and pushed the file to GitHub<br>
-            4. GitHub Pages is enabled for your repository<br><br>
-            Test direct access:<br>
-            <a href="${modelPaths[1]}" target="_blank">${modelPaths[1]}</a>
-          `);
-          return;
-        }
-        
-        const path = modelPaths[currentAttempt];
-        console.log(`Attempting to load model from: ${path}`);
-        document.getElementById('loading').textContent = `Trying source ${currentAttempt + 1} of ${modelPaths.length}...`;
-        
-        loader.load(
-          path,
-          function(gltf) {
-            console.log(`Successfully loaded model from: ${path}`);
-            modelLoaded(gltf);
-          },
-          function(xhr) {
-            const percent = (xhr.loaded / xhr.total * 100).toFixed(2);
-            document.getElementById('progress-bar').style.width = `${percent}%`;
-            console.log(`${percent}% loaded`);
-          },
-          function(error) {
-            console.error(`Attempt ${currentAttempt + 1} failed:`, error);
-            currentAttempt++;
-            setTimeout(tryLoad, 500);
-          }
-        );
-      }
-      
-      tryLoad();
-    }
-
-    function modelLoaded(gltf) {
-      model = gltf.scene;
-      model.scale.set(CONFIG.scale, CONFIG.scale, CONFIG.scale);
-      
-      // Center and normalize model position
-      const box = new THREE.Box3().setFromObject(model);
-      const center = box.getCenter(new THREE.Vector3());
-      model.position.sub(center);
-      
-      // Compute ideal camera distance
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      normalCamera.position.z = maxDim * 2;
-      
-      normalScene.add(model);
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('enter-ar').style.display = 'block';
-      document.getElementById('enter-ar').addEventListener('click', enterAR);
-      
-      console.log('Model successfully loaded and added to scene');
-    }
-
-    function showError(message) {
-      document.getElementById('loading').style.display = 'none';
-      const errorEl = document.getElementById('error');
-      errorEl.innerHTML = message;
-      errorEl.style.display = 'block';
-      console.error(message);
-    }
-
-    function animate() {
-      if (!arMode && model) {
-        model.rotation.y += CONFIG.rotationSpeed;
-        renderer.render(normalScene, normalCamera);
-        requestAnimationFrame(animate);
-      }
-    }
-
-    function onWindowResize() {
-      if (arMode && camera) {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-      } else if (normalCamera) {
-        normalCamera.aspect = window.innerWidth / window.innerHeight;
-        normalCamera.updateProjectionMatrix();
-      }
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    function enterAR() {
-      arMode = true;
-      document.getElementById('enter-ar').style.display = 'none';
-      
-      renderer.xr.enabled = true;
-      document.body.appendChild(ARButton.createButton(renderer, { 
-        requiredFeatures: ['hit-test'],
-        optionalFeatures: ['dom-overlay'],
-        domOverlay: { root: document.body }
-      }));
-      
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera();
-      
-      // AR-optimized lighting
-      const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2);
-      scene.add(light);
-      
-      // Improved reticle
-      reticle = new THREE.Mesh(
-        new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI/2),
-        new THREE.MeshBasicMaterial({ 
-          color: 0xffff00,
-          transparent: true,
-          opacity: 0.8
-        })
-      );
-      reticle.matrixAutoUpdate = false;
-      reticle.visible = false;
-      scene.add(reticle);
-      
-      controller = renderer.xr.getController(0);
-      controller.addEventListener('select', onSelect);
-      scene.add(controller);
-      
-      renderer.xr.addEventListener('sessionstart', () => {
-        console.log('AR session started');
-        renderer.xr.getSession().requestReferenceSpace('viewer').then((refSpace) => {
-          renderer.xr.getSession().requestHitTestSource({ space: refSpace }).then((source) => {
-            renderer.setAnimationLoop((timestamp, frame) => {
-              if (frame) {
-                const referenceSpace = renderer.xr.getReferenceSpace();
-                const hitTestResults = frame.getHitTestResults(source);
-                if (hitTestResults.length > 0) {
-                  const hit = hitTestResults[0];
-                  const pose = hit.getPose(referenceSpace);
-                  reticle.visible = true;
-                  reticle.matrix.fromArray(pose.transform.matrix);
-                } else {
-                  reticle.visible = false;
-                }
-              }
-              renderer.render(scene, camera);
-            });
-          });
-        });
-      });
-      
-      renderer.xr.addEventListener('sessionend', () => {
-        console.log('AR session ended');
-        arMode = false;
-        document.getElementById('enter-ar').style.display = 'block';
-        renderer.setAnimationLoop(animate);
-      });
-    }
-
-    function onSelect() {
-      if (reticle.visible && model) {
-        const clone = model.clone();
-        clone.position.setFromMatrixPosition(reticle.matrix);
-        
-        // Adjust clone scale for AR
-        clone.scale.set(CONFIG.scale * 0.5, CONFIG.scale * 0.5, CONFIG.scale * 0.5);
-        
-        // Add slight random rotation for variety
-        clone.rotation.y = Math.random() * Math.PI * 2;
-        
-        scene.add(clone);
-        
-        // Pulse animation
-        const initialScale = clone.scale.clone();
-        clone.scale.multiplyScalar(1.2);
-        setTimeout(() => {
-          clone.scale.copy(initialScale);
-        }, 200);
-      }
-    }
-  </script>
-</body>
-</html>
+    // Check AR availability
+    async function checkARSupport() {
+      try {
+       
+ar model comes for 1ms and it quickly disappears also  the dummy values are not showing in the ar viewer
