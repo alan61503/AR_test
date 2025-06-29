@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>3D Model Viewer with AR</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -12,6 +12,7 @@
             padding: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
+            touch-action: none;
         }
         #viewer-container {
             width: 100%;
@@ -24,72 +25,101 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
-            padding: 10px 20px;
+            padding: 12px 24px;
             background-color: #4285f4;
             color: white;
             border: none;
-            border-radius: 20px;
+            border-radius: 25px;
             cursor: pointer;
             font-size: 16px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
         #toggle-ar:hover {
             background-color: #3367d6;
         }
         #marker-image {
             position: absolute;
-            bottom: 70px;
+            bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
             width: 150px;
             display: none;
             border: 2px solid white;
-            border-radius: 5px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
         .instructions {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 15px;
+            left: 15px;
+            right: 15px;
             background-color: rgba(0,0,0,0.7);
             color: white;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 12px;
+            border-radius: 8px;
             z-index: 1000;
-            max-width: 300px;
             display: none;
+            font-size: 14px;
+            text-align: center;
+        }
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <div id="viewer-container">
         <!-- Standard 3D View -->
-        <a-scene id="3d-scene" embedded renderer="antialias: true;" vr-mode-ui="enabled: false">
+        <a-scene id="3d-scene" embedded renderer="antialias: true; precision: medium;" vr-mode-ui="enabled: false">
             <a-assets>
                 <a-asset-item id="motorev" src="motorev.glb"></a-asset-item>
             </a-assets>
             
-            <a-entity position="0 0 -3" rotation="0 0 0">
-                <a-entity gltf-model="#motorev" scale="1 1 1"></a-entity>
+            <a-entity position="0 1.5 -4">
+                <a-entity gltf-model="#motorev" scale="0.5 0.5 0.5" rotation="0 45 0"></a-entity>
             </a-entity>
             
             <a-entity position="0 0 0" rotation="-90 0 0">
-                <a-plane color="#cccccc" width="10" height="10"></a-plane>
+                <a-plane color="#dddddd" width="20" height="20" shadow></a-plane>
             </a-entity>
             
-            <a-sky color="#ECECEC"></a-sky>
-            <a-entity light="type: ambient; color: #FFF; intensity: 0.5"></a-entity>
-            <a-entity light="type: directional; color: #FFF; intensity: 0.5" position="-1 1 1"></a-entity>
+            <a-sky color="#f0f0f0"></a-sky>
+            <a-entity light="type: ambient; color: #FFF; intensity: 0.6"></a-entity>
+            <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 2 1" cast-shadow></a-entity>
+            
+            <a-entity camera="fov: 60; zoom: 1;" position="0 1.6 0" look-controls>
+                <a-cursor></a-cursor>
+            </a-entity>
         </a-scene>
         
         <!-- AR View (hidden initially) -->
-        <a-scene id="ar-scene" embedded arjs="sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3;" vr-mode-ui="enabled: false" style="display: none;">
+        <a-scene id="ar-scene" embedded 
+                arjs="sourceType: webcam; debugUIEnabled: false; 
+                detectionMode: mono_and_matrix; matrixCodeType: 3x3; 
+                cameraParametersUrl: https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/camera_para.dat" 
+                vr-mode-ui="enabled: false" 
+                renderer="logarithmicDepthBuffer: true; precision: medium; antialias: true;"
+                style="display: none;">
+            
             <a-assets>
                 <a-asset-item id="motorev-ar" src="motorev.glb"></a-asset-item>
             </a-assets>
             
-            <a-marker type="pattern" url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.hiro">
-                <a-entity gltf-model="#motorev-ar" scale="0.5 0.5 0.5" position="0 0 0"></a-entity>
+            <a-marker type="pattern" preset="hiro" emitevents="true" cursor="rayOrigin: mouse">
+                <a-entity gltf-model="#motorev-ar" 
+                         scale="0.2 0.2 0.2" 
+                         position="0 0 0"
+                         rotation="0 0 0"
+                         animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
+                </a-entity>
             </a-marker>
             
             <a-entity camera></a-entity>
@@ -98,10 +128,12 @@
         <button id="toggle-ar">Switch to AR View</button>
         <img id="marker-image" src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.hiro" alt="Hiro Marker">
         <div class="instructions" id="ar-instructions">
-            <h3>AR Mode Instructions:</h3>
+            <button class="close-btn" id="close-instructions">×</button>
+            <h3>AR Mode Instructions</h3>
             <p>1. Print or display the Hiro marker on another screen</p>
             <p>2. Point your camera at the marker</p>
-            <p>3. The model will appear on the marker</p>
+            <p>3. The model will appear on top of the marker</p>
+            <p>4. You can move around to view from different angles</p>
         </div>
     </div>
 
@@ -109,11 +141,40 @@
         const toggleButton = document.getElementById('toggle-ar');
         const markerImage = document.getElementById('marker-image');
         const arInstructions = document.getElementById('ar-instructions');
+        const closeInstructionsBtn = document.getElementById('close-instructions');
         const standardScene = document.getElementById('3d-scene');
         const arScene = document.getElementById('ar-scene');
         
         let isARMode = false;
         
+        // Adjust scale based on screen size
+        function adjustModelScale() {
+            const isMobile = window.innerWidth <= 768;
+            const modelScale = isMobile ? '0.3 0.3 0.3' : '0.5 0.5 0.5';
+            const arModelScale = isMobile ? '0.15 0.15 0.15' : '0.2 0.2 0.2';
+            
+            document.querySelector('#3d-scene [gltf-model]').setAttribute('scale', modelScale);
+            if (document.querySelector('#ar-scene [gltf-model]')) {
+                document.querySelector('#ar-scene [gltf-model]').setAttribute('scale', arModelScale);
+            }
+        }
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            adjustModelScale();
+            
+            // Add event listener for marker found in AR
+            if (document.querySelector('a-marker')) {
+                document.querySelector('a-marker').addEventListener('markerFound', () => {
+                    console.log('Marker found!');
+                });
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', adjustModelScale);
+        
+        // Toggle between AR and 3D view
         toggleButton.addEventListener('click', () => {
             isARMode = !isARMode;
             
@@ -123,6 +184,12 @@
                 markerImage.style.display = 'block';
                 arInstructions.style.display = 'block';
                 toggleButton.textContent = 'Switch to 3D View';
+                
+                // Adjust AR camera for better viewing
+                const arCamera = document.querySelector('#ar-scene [camera]');
+                if (arCamera) {
+                    arCamera.setAttribute('zoom', '1');
+                }
             } else {
                 standardScene.style.display = 'block';
                 arScene.style.display = 'none';
@@ -130,6 +197,13 @@
                 arInstructions.style.display = 'none';
                 toggleButton.textContent = 'Switch to AR View';
             }
+            
+            adjustModelScale();
+        });
+        
+        // Close instructions
+        closeInstructionsBtn.addEventListener('click', () => {
+            arInstructions.style.display = 'none';
         });
     </script>
 </body>
