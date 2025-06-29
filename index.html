@@ -9,6 +9,9 @@
     <style>
       body, html {
         margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
         overflow: hidden;
         font-family: Arial, sans-serif;
         background: #000;
@@ -24,12 +27,30 @@
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
-        z-index: 10;
+        z-index: 100;
       }
       .item {
         color: orange;
         font-size: 14px;
         font-weight: bold;
+      }
+      .arjs-loader {
+        height: 100%;
+        width: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 1.25em;
+        z-index: 99;
+      }
+      .arjs-loader div {
+        text-align: center;
+        padding: 20px;
       }
     </style>
   </head>
@@ -46,23 +67,60 @@
       <div class="item">Status: <span id="status">Connected</span></div>
     </div>
 
+    <!-- Loading message -->
+    <div class="arjs-loader">
+      <div>
+        <p>Initializing AR...</p>
+        <p>Point your camera at the Hiro marker</p>
+        <p>(Make sure marker is well-lit and visible)</p>
+      </div>
+    </div>
+
     <!-- AR scene -->
-    <a-scene embedded arjs="sourceType: webcam;">
+    <a-scene 
+      vr-mode-ui="enabled: false"
+      embedded 
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+      renderer="logarithmicDepthBuffer: true; precision: medium;"
+    >
       <!-- Marker -->
-      <a-marker preset="hiro">
-        <!-- Replace with your motorev.glb model -->
+      <a-marker preset="hiro" emitevents="true">
+        <!-- 3D Model - replace with your actual model path -->
         <a-entity 
-          gltf-model="motorev.glb" 
+          gltf-model="url(./motorev.glb)" 
           scale="0.1 0.1 0.1"
           rotation="0 0 0"
-          position="0 0 0">
+          position="0 0 0"
+          animation-mixer
+        >
         </a-entity>
+      </a-marker>
+      
+      <!-- Fallback primitive (visible if model fails to load) -->
+      <a-marker preset="hiro">
+        <a-box position="0 0.5 0" material="color: red" scale="0.5 0.5 0.5"></a-box>
       </a-marker>
 
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
+      // Hide loader when scene is loaded
+      document.querySelector('a-scene').addEventListener('loaded', function() {
+        setTimeout(function() {
+          document.querySelector('.arjs-loader').style.display = 'none';
+        }, 1500);
+      });
+
+      // Handle model loading errors
+      document.querySelector('a-scene').addEventListener('model-error', function() {
+        console.error('Model failed to load');
+        document.querySelector('.arjs-loader div').innerHTML = 
+          '<p>Model failed to load</p>' +
+          '<p>Showing fallback object instead</p>' +
+          '<p>Point camera at Hiro marker</p>';
+      });
+
       // Dummy data update
       function getRandom(min, max) {
         return (Math.random() * (max - min) + min).toFixed(1);
