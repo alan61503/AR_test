@@ -26,7 +26,7 @@
       border-radius: 5px;
       cursor: pointer;
       z-index: 10;
-      display: none; /* Hidden until model loads */
+      display: none;
     }
     #loading {
       position: fixed;
@@ -94,41 +94,34 @@
     function loadModel() {
       const loader = new GLTFLoader();
       
-      // Try multiple possible paths
-      const modelPaths = [
-        'motorev.glb',
-        './motorev.glb',
-        '/motorev.glb'
-      ];
+      // Get the correct path for GitHub Pages
+      const baseUrl = window.location.href.includes('github.io') 
+        ? window.location.href.split('/').slice(0, 3).join('/') + '/' 
+        : './';
       
-      let attempts = 0;
+      const modelPath = baseUrl + 'motorev.glb';
+      console.log('Attempting to load model from:', modelPath);
       
-      function tryLoad(path) {
-        loader.load(
-          path,
-          function(gltf) {
-            console.log('Model successfully loaded from:', path);
-            modelLoaded(gltf);
-          },
-          function(xhr) {
-            console.log((xhr.loaded / xhr.total * 100) + '% loaded from ' + path);
-          },
-          function(error) {
-            console.error('Failed to load from', path, error);
-            attempts++;
-            if (attempts < modelPaths.length) {
-              tryLoad(modelPaths[attempts]);
-            } else {
-              showError("Failed to load model. Please check:<br>" +
-                        "1. File exists and is named 'motorev.glb'<br>" +
-                        "2. File is in the same folder as this page<br>" +
-                        "3. You're using a local server (see console for details)");
-            }
-          }
-        );
-      }
-      
-      tryLoad(modelPaths[0]);
+      loader.load(
+        modelPath,
+        function(gltf) {
+          console.log('Model successfully loaded');
+          modelLoaded(gltf);
+        },
+        function(xhr) {
+          console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+          document.getElementById('loading').textContent = 'Loading: ' + Math.round(xhr.loaded / xhr.total * 100) + '%';
+        },
+        function(error) {
+          console.error('Failed to load model', error);
+          showError(`Failed to load model from ${modelPath}<br><br>
+                    Ensure:<br>
+                    1. File is named 'motorev.glb'<br>
+                    2. File is in your repository root<br>
+                    3. File is committed and pushed<br>
+                    4. File size is > 0 bytes`);
+        }
+      );
     }
 
     function modelLoaded(gltf) {
@@ -152,8 +145,6 @@
       document.getElementById('error').style.display = 'block';
       console.error(message);
     }
-
-    // ... [rest of your existing code for AR functions, animate(), etc.] ...
 
     function animate() {
       if (!arMode && model) {
