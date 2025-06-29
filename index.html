@@ -1,329 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Motorev 3D AR Viewer</title>
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #000;
-      color: white;
-      touch-action: manipulation;
-      overflow: hidden;
-    }
-    model-viewer {
-      width: 100vw;
-      height: 100vh;
-      background-color: #222;
-      --poster-color: transparent;
-    }
-    model-viewer[ar] {
-      background-color: transparent;
-    }
-    .ar-button {
-      position: fixed;
-      bottom: 120px; /* Moved higher up */
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: orange;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 30px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      z-index: 100;
-      width: 200px;
-      text-align: center;
-    }
-    .data-panel {
-      position: fixed;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      background-color: rgba(0,0,0,0.7);
-      border-radius: 15px;
-      padding: 15px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      backdrop-filter: blur(5px);
-      z-index: 10;
-      border: 1px solid rgba(255,165,0,0.3);
-    }
-    .data-item {
-      display: flex;
-      flex-direction: column;
-    }
-    .data-label {
-      font-size: 12px;
-      color: #aaa;
-      margin-bottom: 2px;
-    }
-    .data-value {
-      font-size: 16px;
-      font-weight: bold;
-      color: orange;
-    }
-    .unit {
-      font-size: 12px;
-      color: #aaa;
-      margin-left: 2px;
-    }
-    .ar-hint {
-      position: fixed;
-      bottom: 170px; /* Adjusted to be above the AR button */
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: rgba(0,0,0,0.7);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 20px;
-      font-size: 14px;
-      text-align: center;
-      max-width: 80%;
-      backdrop-filter: blur(5px);
-      border: 1px solid rgba(255,255,255,0.2);
-      z-index: 90;
-      display: none;
-    }
-    .surface-marker {
-      position: absolute;
-      width: 120px;
-      height: 120px;
-      border: 2px dashed rgba(255, 255, 255, 0.7);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 5;
-      display: none;
-    }
-    .loading-indicator {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: orange;
-      font-size: 18px;
-      z-index: 1000;
-      display: none;
-    }
-    .compatibility-message {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: rgba(0,0,0,0.8);
-      color: white;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
-      max-width: 80%;
-      display: none;
-      z-index: 1000;
-    }
-    .ar-data-panel {
-      position: fixed;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      background-color: rgba(0,0,0,0.7);
-      border-radius: 15px;
-      padding: 15px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      backdrop-filter: blur(5px);
-      z-index: 10;
-      border: 1px solid rgba(255,165,0,0.3);
-      display: none;
-    }
-    /* Model scaling adjustments */
-    model-viewer::part(model) {
-      scale: 0.5; /* Adjust this value to change model size */
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motorev AR Viewer</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #viewer-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+        #toggle-ar {
+            position: absolute;
+            bottom: 100px; /* Adjusted higher */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            padding: 12px 24px;
+            background-color: orange;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        #marker-image {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 150px;
+            display: none;
+            border: 2px solid white;
+            border-radius: 8px;
+        }
+        .instructions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            text-align: center;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-
-  <div class="data-panel" id="data-panel">
-    <div class="data-item">
-      <span class="data-label">Voltage</span>
-      <span class="data-value"><span id="voltage">46.5</span><span class="unit">V</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Current</span>
-      <span class="data-value"><span id="current">0.5</span><span class="unit">A</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Temperature</span>
-      <span class="data-value"><span id="temperature">34.2</span><span class="unit">°C</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Charge</span>
-      <span class="data-value"><span id="soc">92</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Health</span>
-      <span class="data-value"><span id="soh">96</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Speed</span>
-      <span class="data-value"><span id="speed">0.1</span><span class="unit">km/h</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Range</span>
-      <span class="data-value"><span id="range">82</span><span class="unit">km</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Status</span>
-      <span class="data-value"><span id="status">Connected</span></span>
-    </div>
-  </div>
-
-  <div class="ar-data-panel" id="ar-data-panel">
-    <div class="data-item">
-      <span class="data-label">Voltage</span>
-      <span class="data-value"><span id="ar-voltage">46.5</span><span class="unit">V</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Current</span>
-      <span class="data-value"><span id="ar-current">0.5</span><span class="unit">A</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Temperature</span>
-      <span class="data-value"><span id="ar-temperature">34.2</span><span class="unit">°C</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Charge</span>
-      <span class="data-value"><span id="ar-soc">92</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Health</span>
-      <span class="data-value"><span id="ar-soh">96</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Speed</span>
-      <span class="data-value"><span id="ar-speed">0.1</span><span class="unit">km/h</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Range</span>
-      <span class="data-value"><span id="ar-range">82</span><span class="unit">km</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Status</span>
-      <span class="data-value"><span id="ar-status">Connected</span></span>
-    </div>
-  </div>
-
-  <div class="ar-hint" id="ar-hint">
-    Point your camera at a flat surface to place the model
-  </div>
-
-  <div class="surface-marker" id="surface-marker"></div>
-  <div class="loading-indicator" id="loading-indicator">Detecting surface...</div>
-  <div class="compatibility-message" id="compatibility-message"></div>
-
-  <model-viewer 
-    src="motorev.glb"
-    alt="Motorev 3D Model"
-    ar
-    ar-modes="webxr scene-viewer quick-look"
-    environment-image="neutral"
-    camera-controls
-    xr-environment
-    shadow-intensity="1"
-    quick-look-browsers="safari chrome"
-    ar-scale="fixed"
-    ar-placement="floor"
-    camera-orbit="0deg 75deg 105%"
-    field-of-view="30deg"
-    min-camera-orbit="auto auto 0.1m"
-    max-camera-orbit="auto auto 1000m"
-    bounds="tight"
-    exposure="0.8">
-    <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
-  </model-viewer>
-
-  <script>
-    const modelViewer = document.querySelector('model-viewer');
-    const arButton = document.getElementById('ar-button');
-    const arHint = document.getElementById('ar-hint');
-    const surfaceMarker = document.getElementById('surface-marker');
-    const loadingIndicator = document.getElementById('loading-indicator');
-    const compatibilityMessage = document.getElementById('compatibility-message');
-    const dataPanel = document.getElementById('data-panel');
-    const arDataPanel = document.getElementById('ar-data-panel');
-    
-    // Check AR availability
-    async function checkARSupport() {
-      try {
-        const supported = await modelViewer.canActivateAR;
-        if (!supported) {
-          compatibilityMessage.textContent = "AR is not supported on your device or browser. Try Chrome on Android or Safari on iOS.";
-          compatibilityMessage.style.display = 'block';
-          arButton.style.display = 'none';
-        }
-      } catch (error) {
-        console.error("AR support check failed:", error);
-        compatibilityMessage.textContent = "Error checking AR support. Try Chrome on Android or Safari on iOS.";
-        compatibilityMessage.style.display = 'block';
-        arButton.style.display = 'none';
-      }
-    }
-
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
-      checkARSupport();
-      
-      // Set initial model scale
-      modelViewer.addEventListener('load', () => {
-        // Adjust model scale for both 3D and AR views
-        modelViewer.scale = "0.5 0.5 0.5";
+    <div id="viewer-container">
+        <!-- Standard 3D View -->
+        <a-scene id="3d-scene" embedded renderer="antialias: true;" vr-mode-ui="enabled: false">
+            <a-assets>
+                <a-asset-item id="motorev" src="motorev.glb"></a-asset-item>
+            </a-assets>
+            
+            <a-entity position="0 1.5 -3">
+                <a-entity gltf-model="#motorev" scale="0.3 0.3 0.3" rotation="0 45 0"></a-entity>
+            </a-entity>
+            
+            <a-entity position="0 0 0" rotation="-90 0 0">
+                <a-plane color="#dddddd" width="10" height="10"></a-plane>
+            </a-entity>
+            
+            <a-sky color="#f0f0f0"></a-sky>
+            <a-entity light="type: ambient; color: #FFF; intensity: 0.6"></a-entity>
+            <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 2 1"></a-entity>
+            
+            <a-entity camera="fov: 60" position="0 1.6 0" look-controls></a-entity>
+        </a-scene>
         
-        // For AR placement
-        modelViewer.addEventListener('ar-status', (event) => {
-          if (event.detail.status === 'session-started') {
-            arHint.style.display = 'block';
-            dataPanel.style.display = 'none';
-            arDataPanel.style.display = 'grid';
-          } else if (event.detail.status === 'session-ended') {
-            arHint.style.display = 'none';
-            dataPanel.style.display = 'grid';
-            arDataPanel.style.display = 'none';
-          }
+        <!-- AR View (hidden initially) -->
+        <a-scene id="ar-scene" embedded arjs="sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3;" vr-mode-ui="enabled: false" style="display: none;">
+            <a-assets>
+                <a-asset-item id="motorev-ar" src="motorev.glb"></a-asset-item>
+            </a-assets>
+            
+            <a-marker type="pattern" url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.hiro">
+                <a-entity gltf-model="#motorev-ar" scale="0.15 0.15 0.15" position="0 0 0"></a-entity>
+            </a-marker>
+            
+            <a-entity camera></a-entity>
+        </a-scene>
+        
+        <button id="toggle-ar">Switch to AR View</button>
+        <img id="marker-image" src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.hiro" alt="Hiro Marker">
+        <div class="instructions" id="ar-instructions">
+            <h3>AR Mode Instructions:</h3>
+            <p>1. Print or display the Hiro marker on another screen</p>
+            <p>2. Point your camera at the marker</p>
+            <p>3. The model will appear on the marker</p>
+        </div>
+    </div>
+
+    <script>
+        const toggleButton = document.getElementById('toggle-ar');
+        const markerImage = document.getElementById('marker-image');
+        const arInstructions = document.getElementById('ar-instructions');
+        const standardScene = document.getElementById('3d-scene');
+        const arScene = document.getElementById('ar-scene');
+        
+        let isARMode = false;
+        
+        toggleButton.addEventListener('click', () => {
+            isARMode = !isARMode;
+            
+            if (isARMode) {
+                standardScene.style.display = 'none';
+                arScene.style.display = 'block';
+                markerImage.style.display = 'block';
+                arInstructions.style.display = 'block';
+                toggleButton.textContent = 'Switch to 3D View';
+            } else {
+                standardScene.style.display = 'block';
+                arScene.style.display = 'none';
+                markerImage.style.display = 'none';
+                arInstructions.style.display = 'none';
+                toggleButton.textContent = 'Switch to AR View';
+            }
         });
-      });
-    });
-
-    // Dummy data update (for demonstration)
-    function updateDummyData() {
-      const now = new Date();
-      const seconds = now.getSeconds();
-      
-      // Update regular panel
-      document.getElementById('voltage').textContent = (46 + Math.sin(seconds/10)).toFixed(1);
-      document.getElementById('current').textContent = (0.5 + Math.sin(seconds/5)*0.3).toFixed(1);
-      document.getElementById('temperature').textContent = (34 + Math.sin(seconds/7)*2).toFixed(1);
-      document.getElementById('soc').textContent = Math.max(10, (92 - seconds/60*10)).toFixed(0);
-      document.getElementById('speed').textContent = (Math.sin(seconds/3)*5 + 5).toFixed(1);
-      
-      // Update AR panel
-      document.getElementById('ar-voltage').textContent = (46 + Math.sin(seconds/10)).toFixed(1);
-      document.getElementById('ar-current').textContent = (0.5 + Math.sin(seconds/5)*0.3).toFixed(1);
-      document.getElementById('ar-temperature').textContent = (34 + Math.sin(seconds/7)*2).toFixed(1);
-      document.getElementById('ar-soc').textContent = Math.max(10, (92 - seconds/60*10)).toFixed(0);
-      document.getElementById('ar-speed').textContent = (Math.sin(seconds/3)*5 + 5).toFixed(1);
-    }
-
-    // Start dummy data updates
-    setInterval(updateDummyData, 1000);
-    updateDummyData();
-  </script>
+    </script>
 </body>
 </html>
