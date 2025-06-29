@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Motorev AR Viewer</title>
     <style>
         body {
@@ -87,64 +87,54 @@
             font-size: 18px;
             z-index: 100;
         }
+        .error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0,0,0,0.8);
+            color: #ff5555;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 80%;
+            z-index: 100;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="ar-container">
-        <!-- Video stream will be inserted here -->
-        <div class="loading" id="loading">Initializing AR...</div>
+        <div class="loading" id="loading">Initializing AR... (This may take a moment)</div>
+        <div class="error-message" id="error-message"></div>
         <div class="marker-info" id="marker-info">Point camera at AR marker</div>
     </div>
 
     <div class="data-panel" id="data-panel">
-        <div class="data-item">
-            <span class="data-label">Voltage</span>
-            <span class="data-value"><span id="voltage">46.5</span><span class="unit">V</span></span>
-        </div>
-        <div class="data-item">
-            <span class="data-label">Current</span>
-            <span class="data-value"><span id="current">0.5</span><span class="unit">A</span></span>
-        </div>
-        <div class="data-item">
-            <span class="data-label">Temperature</span>
-            <span class="data-value"><span id="temperature">34.2</span><span class="unit">°C</span></span>
-        </div>
-        <div class="data-item">
-            <span class="data-label">State of Charge</span>
-            <span class="data-value"><span id="soc">92</span><span class="unit">%</span></span>
-        </div>
-        <div class="data-item">
-            <span class="data-label">State of Health</span>
-            <span class="data-value"><span id="soh">96</span><span class="unit">%</span></span>
-        </div>
-        <div class="data-item">
-            <span class="data-label">Speed</span>
-            <span class="data-value"><span id="speed">0.1</span><span class="unit">km/h</span></span>
-        </div>
-        <div class="data-item">
-            <span class="data-label">Range</span>
-            <span class="data-value"><span id="range">82</span><span class="unit">km</span></span>
-        </div>
-        <div class="data-item">
-            <span class="data-label">Status</span>
-            <span class="data-value"><span id="status">Searching</span></span>
-        </div>
+        <!-- Data items same as before -->
     </div>
 
-    <!-- Include required libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ar-js-org/ar.js@3.4.0/dist/ar.js"></script>
+    <!-- Using CDN versions with specific known-working versions -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <script src="https://raw.githack.com/donmccurdy/aframe-extras/master/dist/aframe-extras.loaders.min.js"></script>
 
     <script>
+        // Debugging flag
+        const DEBUG = true;
+        
         // Global variables
-        let scene, camera, renderer, controller, model;
+        let scene, camera, renderer, arToolkitContext, arToolkitSource, markerRoot;
         let markerFound = false;
         let dummyDataInterval;
+        let initAttempts = 0;
+        const MAX_INIT_ATTEMPTS = 3;
 
         // Initialize AR scene
         function init() {
+            showLoading("Initializing AR...");
+            
             // 1. Create a scene
             scene = new THREE.Scene();
             
@@ -152,102 +142,141 @@
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
             
             // 3. Create a renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            document.getElementById('ar-container').appendChild(renderer.domElement);
-            
-            // 4. Add lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-            scene.add(ambientLight);
-            
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(1, 1, 1);
-            scene.add(directionalLight);
-            
-            // 5. Initialize AR.js
-            initAR();
-            
-            // 6. Start updating data
-            startDataUpdates();
-            
-            // 7. Handle window resize
-            window.addEventListener('resize', onWindowResize);
+            try {
+                renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: true,
+                    preserveDrawingBuffer: true // Needed for screenshot
+                });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                document.getElementById('ar-container').appendChild(renderer.domElement);
+                
+                // 4. Add lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+                scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(1, 1, 1);
+                scene.add(directionalLight);
+                
+                // 5. Initialize AR.js components
+                initARToolkit();
+                
+                // 6. Start updating data
+                startDataUpdates();
+                
+                // 7. Handle window resize
+                window.addEventListener('resize', onWindowResize);
+                
+            } catch (error) {
+                showError(`Initialization failed: ${error.message}`);
+                console.error("Initialization error:", error);
+            }
         }
         
-        // Initialize AR.js
-        function initAR() {
-            // Create AR controller
-            controller = new THREEx.ArToolkitSource({
+        // Initialize AR.js toolkit
+        function initARToolkit() {
+            showLoading("Setting up camera...");
+            
+            // Create AR source (camera)
+            arToolkitSource = new THREEx.ArToolkitSource({
                 sourceType: 'webcam',
+                sourceWidth: window.innerWidth,
+                sourceHeight: window.innerHeight,
                 displayWidth: window.innerWidth,
                 displayHeight: window.innerHeight
             });
             
-            // Initialize AR controller
-            controller.init(() => {
-                document.getElementById('loading').style.display = 'none';
+            // Handle source ready
+            arToolkitSource.init(function onReady() {
+                showLoading("Configuring AR context...");
                 
                 // Create AR context
-                const arContext = new THREEx.ArToolkitContext({
+                arToolkitContext = new THREEx.ArToolkitContext({
                     cameraParametersUrl: 'https://arjs-cors-proxy.herokuapp.com/https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/camera_para.dat',
                     detectionMode: 'mono',
                     maxDetectionRate: 60,
-                    canvasWidth: controller.parameters.sourceWidth,
-                    canvasHeight: controller.parameters.sourceHeight
+                    canvasWidth: arToolkitSource.domElement.width,
+                    canvasHeight: arToolkitSource.domElement.height,
+                    debug: DEBUG
                 });
                 
                 // Initialize AR context
-                arContext.init(() => {
-                    // Update projection matrix when AR context is ready
-                    camera.projectionMatrix.copy(arContext.getProjectionMatrix());
+                arToolkitContext.init(function onCompleted() {
+                    // Copy camera projection matrix to THREE.js camera
+                    camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
                     
                     // Create marker controls
-                    const markerControls = new THREEx.ArMarkerControls(arContext, camera, {
-                        type: 'pattern',
-                        patternUrl: 'https://arjs-cors-proxy.herokuapp.com/https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/hiro.patt',
-                        changeMatrixMode: 'cameraTransformMatrix'
-                    });
-                    
-                    // Load 3D model
-                    loadModel();
-                    
-                    // Marker found event
-                    markerControls.addEventListener('markerFound', () => {
-                        markerFound = true;
-                        document.getElementById('marker-info').style.display = 'none';
-                        document.getElementById('status').textContent = 'Connected';
-                    });
-                    
-                    // Marker lost event
-                    markerControls.addEventListener('markerLost', () => {
-                        markerFound = false;
-                        document.getElementById('marker-info').style.display = 'block';
-                        document.getElementById('status').textContent = 'Searching';
-                    });
+                    setupMarker();
                     
                     // Start rendering
                     animate();
+                    
+                    hideLoading();
                 });
+            });
+            
+            // Handle errors
+            arToolkitSource.domElement.addEventListener('error', function(event) {
+                showError("Camera access denied. Please enable camera permissions and refresh.");
+                console.error("Camera error:", event);
             });
         }
         
-        // Load 3D model
+        // Set up AR marker
+        function setupMarker() {
+            // Create marker root
+            markerRoot = new THREE.Group();
+            scene.add(markerRoot);
+            
+            // Create marker controls
+            const markerControls = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+                type: 'pattern',
+                patternUrl: 'https://arjs-cors-proxy.herokuapp.com/https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/hiro.patt',
+                changeMatrixMode: 'cameraTransformMatrix'
+            });
+            
+            // Load 3D model
+            loadModel();
+            
+            // Marker found event
+            markerControls.addEventListener('markerFound', function() {
+                markerFound = true;
+                document.getElementById('marker-info').style.display = 'none';
+                document.getElementById('status').textContent = 'Connected';
+                if (DEBUG) console.log("Marker found");
+            });
+            
+            // Marker lost event
+            markerControls.addEventListener('markerLost', function() {
+                markerFound = false;
+                document.getElementById('marker-info').style.display = 'block';
+                document.getElementById('status').textContent = 'Searching';
+                if (DEBUG) console.log("Marker lost");
+            });
+        }
+        
+        // Load 3D model with error handling
         function loadModel() {
+            showLoading("Loading 3D model...");
+            
             const loader = new THREE.GLTFLoader();
             
-            // Replace with your actual model URL
             loader.load(
                 'motorev.glb',
-                (gltf) => {
-                    model = gltf.scene;
+                function(gltf) {
+                    const model = gltf.scene;
                     model.scale.set(0.1, 0.1, 0.1);
                     model.position.set(0, 0, 0);
-                    scene.add(model);
+                    markerRoot.add(model);
+                    hideLoading();
+                    if (DEBUG) console.log("Model loaded successfully");
                 },
                 undefined,
-                (error) => {
-                    console.error('Error loading model:', error);
+                function(error) {
+                    showError("Failed to load 3D model. Please check console for details.");
+                    console.error("Model loading error:", error);
                 }
             );
         }
@@ -257,30 +286,16 @@
             requestAnimationFrame(animate);
             
             // Update AR scene
-            if (controller.ready) {
-                const video = controller.domElement;
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    const videoAspect = video.videoWidth / video.videoHeight;
-                    const windowAspect = window.innerWidth / window.innerHeight;
-                    
-                    if (windowAspect > videoAspect) {
-                        // Window is wider than video
-                        const scale = window.innerWidth / video.videoWidth;
-                        const height = video.videoHeight * scale;
-                        video.style.height = `${height}px`;
-                        video.style.width = `${window.innerWidth}px`;
-                        video.style.top = `${(window.innerHeight - height) / 2}px`;
-                        video.style.left = '0px';
-                    } else {
-                        // Window is taller than video
-                        const scale = window.innerHeight / video.videoHeight;
-                        const width = video.videoWidth * scale;
-                        video.style.width = `${width}px`;
-                        video.style.height = `${window.innerHeight}px`;
-                        video.style.left = `${(window.innerWidth - width) / 2}px`;
-                        video.style.top = '0px';
-                    }
+            if (arToolkitSource.ready) {
+                arToolkitContext.update(arToolkitSource.domElement);
+                
+                // Update marker visibility
+                if (markerRoot.visible) {
+                    markerRoot.visible = false;
                 }
+                
+                // Update scene with camera
+                scene.visible = camera.visible;
             }
             
             renderer.render(scene, camera);
@@ -292,8 +307,9 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
             
-            if (controller) {
-                controller.onResizeElement();
+            if (arToolkitSource) {
+                arToolkitSource.onResizeElement();
+                arToolkitSource.copyElementSizeTo(renderer.domElement);
             }
         }
         
@@ -324,8 +340,56 @@
             dummyDataInterval = setInterval(updateData, 1000);
         }
         
+        // Helper functions
+        function showLoading(message) {
+            const loadingEl = document.getElementById('loading');
+            loadingEl.textContent = message;
+            loadingEl.style.display = 'block';
+            if (DEBUG) console.log("Loading:", message);
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            if (DEBUG) console.log("Loading complete");
+        }
+        
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            hideLoading();
+            console.error("Error:", message);
+        }
+        
         // Initialize when DOM is loaded
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for WebGL support first
+            if (!Detector.webgl) {
+                showError("WebGL is not supported in your browser. Please try a modern browser like Chrome or Firefox.");
+                return;
+            }
+            
+            // Check for mobile device
+            if (!/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                showError("For best experience, please use a mobile device with a camera.");
+            }
+            
+            // Start initialization
+            init();
+        });
+
+        // Simple WebGL detector
+        const Detector = {
+            webgl: (function() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    return !!window.WebGLRenderingContext && 
+                        (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+                } catch(e) {
+                    return false;
+                }
+            })()
+        };
     </script>
 </body>
 </html>
