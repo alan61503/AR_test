@@ -1,372 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Motorev 3D AR Viewer</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WebXR AR Viewer</title>
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #000;
-      color: white;
-      touch-action: manipulation;
-    }
-    model-viewer {
-      width: 100vw;
-      height: 100vh;
-      background-color: #222;
-    }
-    model-viewer[ar] {
-      background-color: transparent;
-    }
-    .ar-button {
-      position: fixed;
-      bottom: 70px;
+    body { margin: 0; padding: 0; }
+    model-viewer { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <!-- Pure WebXR AR viewer -->
+  <model-viewer
+    src="motorev.glb"  <!-- Replace with your GLB file -->
+    ar
+    ar-modes="webxr"     <!-- Force WebXR only -->
+    camera-controls
+    environment-image="neutral"
+    xr-environment
+    ar-scale="fixed"
+    ar-placement="floor"
+  >
+    <button slot="ar-button" style="
+      position: absolute;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background-color: orange;
+      background: orange;
       color: white;
       border: none;
       padding: 12px 24px;
       border-radius: 30px;
-      cursor: pointer;
       font-size: 16px;
-      font-weight: bold;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      z-index: 100;
-    }
-    .data-panel {
-      position: fixed;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      background-color: rgba(0,0,0,0.7);
-      border-radius: 15px;
-      padding: 15px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      backdrop-filter: blur(5px);
-      z-index: 10;
-      border: 1px solid rgba(255,165,0,0.3);
-    }
-    .data-item {
-      display: flex;
-      flex-direction: column;
-    }
-    .data-label {
-      font-size: 12px;
-      color: #aaa;
-      margin-bottom: 2px;
-    }
-    .data-value {
-      font-size: 16px;
-      font-weight: bold;
-      color: orange;
-    }
-    .unit {
-      font-size: 12px;
-      color: #aaa;
-      margin-left: 2px;
-    }
-    .ar-hint {
-      position: fixed;
-      bottom: 120px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: rgba(0,0,0,0.7);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 20px;
-      font-size: 14px;
-      text-align: center;
-      max-width: 80%;
-      backdrop-filter: blur(5px);
-      border: 1px solid rgba(255,255,255,0.2);
-      z-index: 90;
-      display: none;
-    }
-    .surface-marker {
-      position: absolute;
-      width: 120px;
-      height: 120px;
-      border: 2px dashed rgba(255, 255, 255, 0.7);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 5;
-      display: none;
-    }
-    .loading-indicator {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: orange;
-      font-size: 18px;
-      z-index: 1000;
-      display: none;
-    }
-    .compatibility-message {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: rgba(0,0,0,0.8);
-      color: white;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
-      max-width: 80%;
-      display: none;
-      z-index: 1000;
-    }
-    .ar-data-panel {
-      position: fixed;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      background-color: rgba(0,0,0,0.7);
-      border-radius: 15px;
-      padding: 15px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      backdrop-filter: blur(5px);
-      z-index: 10;
-      border: 1px solid rgba(255,165,0,0.3);
-      display: none;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="data-panel" id="data-panel">
-    <div class="data-item">
-      <span class="data-label">Voltage</span>
-      <span class="data-value"><span id="voltage">46.5</span><span class="unit">V</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Current</span>
-      <span class="data-value"><span id="current">0.5</span><span class="unit">A</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Temperature</span>
-      <span class="data-value"><span id="temperature">34.2</span><span class="unit">°C</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Charge</span>
-      <span class="data-value"><span id="soc">92</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Health</span>
-      <span class="data-value"><span id="soh">96</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Speed</span>
-      <span class="data-value"><span id="speed">0.1</span><span class="unit">km/h</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Range</span>
-      <span class="data-value"><span id="range">82</span><span class="unit">km</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Status</span>
-      <span class="data-value"><span id="status">Connected</span></span>
-    </div>
-  </div>
-
-  <div class="ar-data-panel" id="ar-data-panel">
-    <div class="data-item">
-      <span class="data-label">Voltage</span>
-      <span class="data-value"><span id="ar-voltage">46.5</span><span class="unit">V</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Current</span>
-      <span class="data-value"><span id="ar-current">0.5</span><span class="unit">A</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Temperature</span>
-      <span class="data-value"><span id="ar-temperature">34.2</span><span class="unit">°C</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Charge</span>
-      <span class="data-value"><span id="ar-soc">92</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Health</span>
-      <span class="data-value"><span id="ar-soh">96</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Speed</span>
-      <span class="data-value"><span id="ar-speed">0.1</span><span class="unit">km/h</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Range</span>
-      <span class="data-value"><span id="ar-range">82</span><span class="unit">km</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Status</span>
-      <span class="data-value"><span id="ar-status">Connected</span></span>
-    </div>
-  </div>
-
-  <div class="ar-hint" id="ar-hint">
-    Point your camera at any flat surface to place the model
-  </div>
-
-  <div class="surface-marker" id="surface-marker"></div>
-  <div class="loading-indicator" id="loading-indicator">Detecting surface...</div>
-  <div class="compatibility-message" id="compatibility-message"></div>
-
-  <model-viewer 
-    src="motorev.glb"
-    alt="Motorev 3D Model"
-    ar
-    ar-modes="webxr scene-viewer quick-look"
-    environment-image="neutral"
-    camera-controls
-    xr-environment
-    shadow-intensity="1"
-    quick-look-browsers="safari chrome"
-    ar-scale="fixed"
-    ar-placement="floor"
-    touch-action="none">
-    <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
+    ">
+      View in AR
+    </button>
   </model-viewer>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const modelViewer = document.querySelector('model-viewer');
-      const arButton = document.getElementById('ar-button');
-      const arHint = document.getElementById('ar-hint');
-      const surfaceMarker = document.getElementById('surface-marker');
-      const loadingIndicator = document.getElementById('loading-indicator');
-      const compatibilityMessage = document.getElementById('compatibility-message');
-      const dataPanel = document.getElementById('data-panel');
-      const arDataPanel = document.getElementById('ar-data-panel');
-      
-      // AR session variables
-      let arSession = null;
-      let isARSessionActive = false;
-
-      // Check AR support
-      async function checkARSupport() {
-        try {
-          // Check if model-viewer AR is supported
-          const isSupported = await modelViewer.activateAR();
-          if (!isSupported) {
-            showCompatibilityMessage("AR is not supported on your device");
-            return false;
-          }
-          return true;
-        } catch (error) {
-          console.error("AR support check failed:", error);
-          showCompatibilityMessage("Error checking AR support");
-          return false;
-        }
+    // Basic WebXR availability check
+    document.querySelector('model-viewer').addEventListener('ar-status', (event) => {
+      if (event.detail.status === 'failed') {
+        alert("WebXR AR failed. Try Chrome on an ARCore-supported Android device.");
       }
-
-      function showCompatibilityMessage(message) {
-        compatibilityMessage.textContent = message;
-        compatibilityMessage.style.display = 'block';
-        arButton.style.display = 'none';
-      }
-
-      // Handle AR session events
-      modelViewer.addEventListener('ar-status', (event) => {
-        console.log('AR Status:', event.detail.status);
-        
-        switch(event.detail.status) {
-          case 'session-started':
-            isARSessionActive = true;
-            dataPanel.style.display = 'none';
-            arDataPanel.style.display = 'grid';
-            loadingIndicator.style.display = 'block';
-            break;
-            
-          case 'session-ended':
-            isARSessionActive = false;
-            dataPanel.style.display = 'grid';
-            arDataPanel.style.display = 'none';
-            loadingIndicator.style.display = 'none';
-            arHint.style.display = 'none';
-            break;
-            
-          case 'failed':
-            showCompatibilityMessage("AR failed to start. Try again in better lighting.");
-            break;
-        }
-      });
-
-      modelViewer.addEventListener('ar-tracking', (event) => {
-        console.log('AR Tracking:', event.detail.status);
-        
-        if (event.detail.status === 'tracking') {
-          loadingIndicator.style.display = 'none';
-          arHint.style.display = 'block';
-        } else {
-          loadingIndicator.style.display = 'block';
-          arHint.style.display = 'none';
-        }
-      });
-
-      // Handle model placement
-      modelViewer.addEventListener('click', (event) => {
-        if (!isARSessionActive) return;
-        
-        // Get the tap position
-        const tapX = event.clientX;
-        const tapY = event.clientY;
-        
-        // Show surface marker temporarily
-        surfaceMarker.style.display = 'block';
-        surfaceMarker.style.left = `${tapX - 60}px`;
-        surfaceMarker.style.top = `${tapY - 60}px`;
-        
-        setTimeout(() => {
-          surfaceMarker.style.display = 'none';
-        }, 500);
-      });
-
-      // Update dummy data
-      function updateDummyData() {
-        const now = new Date();
-        const seconds = now.getSeconds();
-        const minuteFactor = now.getMinutes() / 60;
-        
-        // Oscillating values for demo
-        const voltage = 46 + Math.sin(seconds/10) + minuteFactor;
-        const current = 0.5 + Math.sin(seconds/5) * 0.3;
-        const temp = 34 + Math.sin(seconds/7) * 2;
-        const soc = 92 - minuteFactor * 10;
-        
-        // Update both panels
-        document.getElementById('voltage').textContent = voltage.toFixed(1);
-        document.getElementById('ar-voltage').textContent = voltage.toFixed(1);
-        
-        document.getElementById('current').textContent = current.toFixed(1);
-        document.getElementById('ar-current').textContent = current.toFixed(1);
-        
-        document.getElementById('temperature').textContent = temp.toFixed(1);
-        document.getElementById('ar-temperature').textContent = temp.toFixed(1);
-        
-        document.getElementById('soc').textContent = Math.max(20, soc.toFixed(0));
-        document.getElementById('ar-soc').textContent = Math.max(20, soc.toFixed(0));
-      }
-
-      // Initialize
-      checkARSupport();
-      setInterval(updateDummyData, 1000);
-
-      // Prevent default touch behavior
-      document.addEventListener('touchmove', (e) => {
-        if (isARSessionActive) {
-          e.preventDefault();
-        }
-      }, { passive: false });
     });
   </script>
 </body>
