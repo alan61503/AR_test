@@ -1,50 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Basic WebXR AR Test</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model Viewer with AR</title>
     <style>
-      body { margin: 0; overflow: hidden; }
-      button {
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 10px 20px;
-        font-size: 1em;
-        z-index: 1;
-      }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+        #ar-button {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        #ar-button:hover {
+            background-color: #3367d6;
+        }
+        #ar-button:disabled {
+            background-color: #9e9e9e;
+            cursor: not-allowed;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 10;
+        }
     </style>
-  </head>
-  <body>
-    <script type="module">
-      import * as THREE from 'https://unpkg.com/three@0.152.2/build/three.module.js';
-      import { ARButton } from 'https://unpkg.com/three@0.152.2/examples/jsm/webxr/ARButton.js';
+</head>
+<body>
+    <div id="container">
+        <div id="loading">Loading 3D model...</div>
+        <button id="ar-button" disabled>View in AR</button>
+    </div>
 
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera();
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/ARButton.js"></script>
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.xr.enabled = true;
-      document.body.appendChild(renderer.domElement);
+    <script>
+        let camera, scene, renderer, model, controls;
+        let isARSession = false;
+        const container = document.getElementById('container');
+        const loadingElement = document.getElementById('loading');
+        const arButton = document.getElementById('ar-button');
 
-      document.body.appendChild(ARButton.createButton(renderer));
+        init();
+        animate();
 
-      const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-      scene.add(light);
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x333333);
 
-      // Add a simple test cube to verify rendering
-      const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-      const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-      const cube = new THREE.Mesh(geometry, material);
-      cube.position.set(0, 0, -0.5);
-      scene.add(cube);
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 5);
 
-      renderer.setAnimationLoop(() => {
-        renderer.render(scene, camera);
-      });
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            // Add orbit controls for non-AR view
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Load GLB model
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                'motorev.glb',
+                function (gltf) {
+                    model = gltf.scene;
+                    scene.add(model);
+                    loadingElement.style.display = 'none';
+                    arButton.disabled = false;
+                    
+                    // Center and scale model
+                    const box = new THREE.Box3().setFromObject(model);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+                    
+                    model.position.x += (model.position.x - center.x);
+                    model.position.y += (model.position.y - center.y);
+                    model.position.z += (model.position.z - center.z);
+                    
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 2 / maxDim;
+                    model.scale.set(scale, scale, scale);
+                },
+                undefined,
+                function (error) {
+                    console.error('Error loading GLB model:', error);
+                    loadingElement.textContent = 'Error loading model. Check console for details.';
+                }
+            );
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+
+            // Set up AR button
+            arButton.addEventListener('click', function() {
+                if (!isARSession) {
+                    startAR();
+                }
+            });
+        }
+
+        function startAR() {
+            isARSession = true;
+            
+            // Remove orbit controls
+            controls.dispose();
+            
+            // Create AR button
+            document.body.appendChild(THREE.ARButton.createButton(renderer, { 
+                requiredFeatures: ['hit-test'], 
+                optionalFeatures: ['dom-overlay'],
+                domOverlay: { root: document.body }
+            }));
+            
+            // Hide our custom AR button
+            arButton.style.display = 'none';
+            
+            // Set up XR session
+            renderer.xr.addEventListener('sessionstart', function() {
+                // Reset camera position for AR
+                camera.position.set(0, 0, 0);
+                
+                // Add reticle for AR placement
+                const reticle = new THREE.Mesh(
+                    new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2),
+                    new THREE.MeshBasicMaterial({ color: 0xffffff })
+                );
+                reticle.matrixAutoUpdate = false;
+                reticle.visible = false;
+                scene.add(reticle);
+                
+                // Handle controller select
+                const controller = renderer.xr.getController(0);
+                controller.addEventListener('select', onSelect);
+                scene.add(controller);
+                
+                function onSelect() {
+                    if (model && !model.visible) {
+                        model.visible = true;
+                        reticle.visible = false;
+                        
+                        // Position model at reticle position
+                        model.position.setFromMatrixPosition(reticle.matrix);
+                        
+                        // Rotate model to face camera
+                        model.quaternion.setFromRotationMatrix(
+                            new THREE.Matrix4().lookAt(
+                                model.position,
+                                camera.position,
+                                new THREE.Vector3(0, 1, 0)
+                            )
+                        );
+                    }
+                }
+                
+                // Hide model initially in AR mode
+                if (model) {
+                    model.visible = false;
+                }
+            });
+            
+            renderer.xr.addEventListener('sessionend', function() {
+                isARSession = false;
+                arButton.style.display = 'block';
+                if (model) model.visible = true;
+            });
+            
+            // Start XR session
+            renderer.xr.setReferenceSpaceType('local');
+            renderer.xr.getSession().then(session => {
+                session.addEventListener('end', function() {
+                    isARSession = false;
+                    arButton.style.display = 'block';
+                    if (model) model.visible = true;
+                });
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (!isARSession) {
+                controls.update();
+            }
+            
+            renderer.render(scene, camera);
+        }
     </script>
-  </body>
+</body>
 </html>
