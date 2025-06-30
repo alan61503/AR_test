@@ -1,7 +1,14 @@
+Of course. Here is the complete code, using just the filename `motorev.glb` to load the model.
+
+This version assumes that the `motorev.glb` file is located in the exact same directory as your HTML file.
+
+-----
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF--8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MOTOREV AR Viewer</title>
   <style>
@@ -88,13 +95,13 @@
       reticle.visible = false;
       scene.add(reticle);
 
-      // Load GLB model
+      // Load GLB model from the same path
       const loader = new GLTFLoader();
       loader.load(
         'motorev.glb',
         function (gltf) {
           model = gltf.scene;
-          model.visible = false;
+          model.visible = false; 
           scene.add(model);
           centerAndScaleModel(model);
           loading.style.display = 'none';
@@ -103,7 +110,7 @@
         undefined,
         function (error) {
           console.error('GLTFLoader error:', error);
-          loading.textContent = 'Failed to load model';
+          loading.textContent = 'Failed to load model. Ensure it is in the same folder.';
         }
       );
 
@@ -187,3 +194,4 @@
   </script>
 </body>
 </html>
+```
