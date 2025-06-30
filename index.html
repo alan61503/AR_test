@@ -6,235 +6,11 @@
   <title>Motorev 3D AR Viewer</title>
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #000;
-      color: white;
-      touch-action: manipulation;
-    }
-    model-viewer {
-      width: 100vw;
-      height: 100vh;
-      background-color: #222;
-    }
-    model-viewer[ar] {
-      background-color: transparent;
-    }
-    .ar-button {
-      position: fixed;
-      bottom: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: orange;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 30px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      z-index: 100;
-    }
-    .data-panel {
-      position: fixed;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      background-color: rgba(0,0,0,0.7);
-      border-radius: 15px;
-      padding: 15px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      backdrop-filter: blur(5px);
-      z-index: 10;
-      border: 1px solid rgba(255,165,0,0.3);
-    }
-    .data-item {
-      display: flex;
-      flex-direction: column;
-    }
-    .data-label {
-      font-size: 12px;
-      color: #aaa;
-      margin-bottom: 2px;
-    }
-    .data-value {
-      font-size: 16px;
-      font-weight: bold;
-      color: orange;
-    }
-    .unit {
-      font-size: 12px;
-      color: #aaa;
-      margin-left: 2px;
-    }
-    .ar-hint {
-      position: fixed;
-      bottom: 120px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: rgba(0,0,0,0.7);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 20px;
-      font-size: 14px;
-      text-align: center;
-      max-width: 80%;
-      backdrop-filter: blur(5px);
-      border: 1px solid rgba(255,255,255,0.2);
-      z-index: 90;
-      display: none;
-    }
-    .surface-marker {
-      position: absolute;
-      width: 120px;
-      height: 120px;
-      border: 2px dashed rgba(255, 255, 255, 0.7);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 5;
-      display: none;
-    }
-    .loading-indicator {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: orange;
-      font-size: 18px;
-      z-index: 1000;
-      display: none;
-    }
-    .compatibility-message {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: rgba(0,0,0,0.8);
-      color: white;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
-      max-width: 80%;
-      display: none;
-      z-index: 1000;
-    }
-    .ar-data-panel {
-      position: fixed;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      background-color: rgba(0,0,0,0.7);
-      border-radius: 15px;
-      padding: 15px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      backdrop-filter: blur(5px);
-      z-index: 10;
-      border: 1px solid rgba(255,165,0,0.3);
-      display: none;
-    }
+    /* ... (keep all your existing styles the same) ... */
   </style>
 </head>
 <body>
-
-  <div class="data-panel" id="data-panel">
-    <div class="data-item">
-      <span class="data-label">Voltage</span>
-      <span class="data-value"><span id="voltage">46.5</span><span class="unit">V</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Current</span>
-      <span class="data-value"><span id="current">0.5</span><span class="unit">A</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Temperature</span>
-      <span class="data-value"><span id="temperature">34.2</span><span class="unit">°C</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Charge</span>
-      <span class="data-value"><span id="soc">92</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Health</span>
-      <span class="data-value"><span id="soh">96</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Speed</span>
-      <span class="data-value"><span id="speed">0.1</span><span class="unit">km/h</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Range</span>
-      <span class="data-value"><span id="range">82</span><span class="unit">km</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Status</span>
-      <span class="data-value"><span id="status">Connected</span></span>
-    </div>
-  </div>
-
-  <div class="ar-data-panel" id="ar-data-panel">
-    <div class="data-item">
-      <span class="data-label">Voltage</span>
-      <span class="data-value"><span id="ar-voltage">46.5</span><span class="unit">V</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Current</span>
-      <span class="data-value"><span id="ar-current">0.5</span><span class="unit">A</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Temperature</span>
-      <span class="data-value"><span id="ar-temperature">34.2</span><span class="unit">°C</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Charge</span>
-      <span class="data-value"><span id="ar-soc">92</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Health</span>
-      <span class="data-value"><span id="ar-soh">96</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Speed</span>
-      <span class="data-value"><span id="ar-speed">0.1</span><span class="unit">km/h</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Range</span>
-      <span class="data-value"><span id="ar-range">82</span><span class="unit">km</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Status</span>
-      <span class="data-value"><span id="ar-status">Connected</span></span>
-    </div>
-  </div>
-
-  <div class="ar-hint" id="ar-hint">
-    Point your camera at any flat surface to place the model
-  </div>
-
-  <div class="surface-marker" id="surface-marker"></div>
-  <div class="loading-indicator" id="loading-indicator">Detecting surface...</div>
-  <div class="compatibility-message" id="compatibility-message"></div>
-
-  <model-viewer 
-    src="motorev.glb"
-    alt="Motorev 3D Model"
-    ar
-    ar-modes="webxr scene-viewer quick-look"
-    environment-image="neutral"
-    camera-controls
-    xr-environment
-    shadow-intensity="1"
-    quick-look-browsers="safari chrome"
-    ar-scale="fixed"
-    ar-placement="floor">
-    <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
-  </model-viewer>
+  <!-- ... (keep all your existing HTML the same) ... -->
 
   <script>
     const modelViewer = document.querySelector('model-viewer');
@@ -252,71 +28,129 @@
     let surfaceDetectionTimeout = null;
     let dummyDataInterval = null;
 
-    // Check AR availability
+    // Improved AR availability check
     async function checkARSupport() {
       try {
-        const supported = await modelViewer.canActivateAR();
-        if (!supported) {
-          showCompatibilityMessage("AR is not supported on your device or browser.");
+        // First check if model-viewer is properly loaded
+        if (!modelViewer || !modelViewer.canActivateAR) {
+          throw new Error('Model Viewer not loaded properly');
+        }
+
+        // Check for WebXR support
+        const isWebXRSupported = 'xr' in navigator;
+        
+        // Check for Scene Viewer support (Android)
+        const isSceneViewerSupported = 
+          /android/i.test(navigator.userAgent) && 
+          !/chrome|firefox|edge/i.test(navigator.userAgent);
+        
+        // Check for Quick Look support (iOS)
+        const isQuickLookSupported = 
+          /iphone|ipad|ipod/i.test(navigator.userAgent) && 
+          /safari/i.test(navigator.userAgent);
+
+        // If any AR mode is supported
+        if (isWebXRSupported || isSceneViewerSupported || isQuickLookSupported) {
+          // Hide compatibility message if shown
+          compatibilityMessage.style.display = 'none';
+          return true;
+        } else {
+          throw new Error('No AR modes supported');
         }
       } catch (error) {
-        console.error("AR support check failed:", error);
-        showCompatibilityMessage("AR is not supported on your device or browser.");
+        console.log("AR support check:", error.message);
+        showCompatibilityMessage("AR may not be fully supported on your device. Try with Chrome on Android or Safari on iOS.");
+        return false;
       }
     }
 
     function showCompatibilityMessage(message) {
-      compatibilityMessage.textContent = message;
+      compatibilityMessage.innerHTML = message + 
+        "<br><br>Supported browsers:<br>" +
+        "- Chrome for Android (WebXR)<br>" +
+        "- Safari for iOS (Quick Look)<br>" +
+        "- Native Android browser (Scene Viewer)";
       compatibilityMessage.style.display = 'block';
       arButton.style.display = 'none';
     }
 
-    // Initialize AR session
+    // Initialize AR session with better error handling
     function initializeARSession() {
       modelViewer.addEventListener('ar-status', (event) => {
-        if (event.detail.status === 'session-started') {
-          arSession = true;
-          dataPanel.style.display = 'none';
-          arDataPanel.style.display = 'grid';
-          arHint.style.display = 'block';
-          loadingIndicator.style.display = 'block';
-          startSurfaceDetection();
-        } else if (event.detail.status === 'session-ended') {
-          arSession = false;
-          dataPanel.style.display = 'grid';
-          arDataPanel.style.display = 'none';
-          arHint.style.display = 'none';
-          loadingIndicator.style.display = 'none';
-          surfaceMarker.style.display = 'none';
-          clearTimeout(surfaceDetectionTimeout);
+        console.log('AR Status:', event.detail.status);
+        
+        switch (event.detail.status) {
+          case 'session-started':
+            arSession = true;
+            dataPanel.style.display = 'none';
+            arDataPanel.style.display = 'grid';
+            arHint.style.display = 'block';
+            loadingIndicator.style.display = 'block';
+            startSurfaceDetection();
+            break;
+            
+          case 'session-ended':
+            arSession = false;
+            dataPanel.style.display = 'grid';
+            arDataPanel.style.display = 'none';
+            arHint.style.display = 'none';
+            loadingIndicator.style.display = 'none';
+            surfaceMarker.style.display = 'none';
+            clearTimeout(surfaceDetectionTimeout);
+            break;
+            
+          case 'not-supported':
+            showCompatibilityMessage("AR mode not supported in current context.");
+            break;
+            
+          case 'failed':
+            showCompatibilityMessage("AR session failed to start. Try again.");
+            break;
         }
+      });
+
+      // Add error listener
+      modelViewer.addEventListener('error', (event) => {
+        console.error('Model Viewer Error:', event.detail);
+        showCompatibilityMessage("Error loading 3D model. Please check console for details.");
       });
     }
 
-    // Surface detection for AR placement
+    // Surface detection for AR placement with better checks
     function startSurfaceDetection() {
-      if (!modelViewer.ar) return;
+      if (!modelViewer.ar || !modelViewer.isInArMode) {
+        console.warn("AR mode not active - can't start surface detection");
+        return;
+      }
 
       const updateLoop = () => {
-        if (!modelViewer.ar || !modelViewer.isInArMode) return;
+        if (!modelViewer.ar || !modelViewer.isInArMode) {
+          console.log("Stopping surface detection - AR session ended");
+          return;
+        }
 
-        const hitTestResult = modelViewer.ar.hitTest(0.5, 0.5); // Center of the screen
-        if (hitTestResult) {
-          const position = hitTestResult.position;
-          lastDetectedPosition = position;
-          
-          // Update surface marker position
-          const viewportPosition = modelViewer.ar.worldToViewport(position);
-          surfaceMarker.style.left = `${viewportPosition.x - 60}px`;
-          surfaceMarker.style.top = `${viewportPosition.y - 60}px`;
-          surfaceMarker.style.display = 'block';
-          
-          loadingIndicator.style.display = 'none';
-          arHint.style.display = 'none';
-        } else {
-          surfaceMarker.style.display = 'none';
-          loadingIndicator.style.display = 'block';
-          arHint.style.display = 'block';
+        try {
+          const hitTestResult = modelViewer.ar.hitTest(0.5, 0.5); // Center of the screen
+          if (hitTestResult) {
+            const position = hitTestResult.position;
+            lastDetectedPosition = position;
+            
+            // Update surface marker position
+            const viewportPosition = modelViewer.ar.worldToViewport(position);
+            surfaceMarker.style.left = `${viewportPosition.x - 60}px`;
+            surfaceMarker.style.top = `${viewportPosition.y - 60}px`;
+            surfaceMarker.style.display = 'block';
+            
+            loadingIndicator.style.display = 'none';
+            arHint.style.display = 'none';
+          } else {
+            surfaceMarker.style.display = 'none';
+            loadingIndicator.style.display = 'block';
+            arHint.style.display = 'block';
+          }
+        } catch (error) {
+          console.error("Surface detection error:", error);
+          loadingIndicator.textContent = "Surface detection failed";
         }
 
         requestAnimationFrame(updateLoop);
@@ -335,42 +169,48 @@
       const speed = (Math.random() * 0.2).toFixed(1);
       const range = Math.max(75, Math.min(85, 82 + (Math.random() * 6 - 3))).toFixed(0);
 
-      // Update regular panel
-      document.getElementById('voltage').textContent = voltage;
-      document.getElementById('current').textContent = current;
-      document.getElementById('temperature').textContent = temperature;
-      document.getElementById('soc').textContent = soc;
-      document.getElementById('soh').textContent = soh;
-      document.getElementById('speed').textContent = speed;
-      document.getElementById('range').textContent = range;
-
-      // Update AR panel
-      document.getElementById('ar-voltage').textContent = voltage;
-      document.getElementById('ar-current').textContent = current;
-      document.getElementById('ar-temperature').textContent = temperature;
-      document.getElementById('ar-soc').textContent = soc;
-      document.getElementById('ar-soh').textContent = soh;
-      document.getElementById('ar-speed').textContent = speed;
-      document.getElementById('ar-range').textContent = range;
+      // Update both regular and AR panels
+      ['', 'ar-'].forEach(prefix => {
+        document.getElementById(`${prefix}voltage`).textContent = voltage;
+        document.getElementById(`${prefix}current`).textContent = current;
+        document.getElementById(`${prefix}temperature`).textContent = temperature;
+        document.getElementById(`${prefix}soc`).textContent = soc;
+        document.getElementById(`${prefix}soh`).textContent = soh;
+        document.getElementById(`${prefix}speed`).textContent = speed;
+        document.getElementById(`${prefix}range`).textContent = range;
+      });
     }
 
-    // Initialize the application
-    function init() {
-      checkARSupport();
-      initializeARSession();
+    // Initialize the application with better sequencing
+    async function init() {
+      // First check if model-viewer is loaded
+      if (!modelViewer) {
+        showCompatibilityMessage("3D viewer failed to load. Please refresh the page.");
+        return;
+      }
+
+      // Wait for model-viewer to be ready
+      await customElements.whenDefined('model-viewer');
       
-      // Start dummy data generation
-      dummyDataInterval = setInterval(generateDummyData, 2000);
-      generateDummyData();
+      // Check AR support
+      const arSupported = await checkARSupport();
       
-      // Handle window resize
-      window.addEventListener('resize', () => {
-        if (lastDetectedPosition && modelViewer.ar) {
-          const viewportPosition = modelViewer.ar.worldToViewport(lastDetectedPosition);
-          surfaceMarker.style.left = `${viewportPosition.x - 60}px`;
-          surfaceMarker.style.top = `${viewportPosition.y - 60}px`;
-        }
-      });
+      if (arSupported) {
+        initializeARSession();
+        
+        // Start dummy data generation
+        dummyDataInterval = setInterval(generateDummyData, 2000);
+        generateDummyData();
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+          if (lastDetectedPosition && modelViewer.ar) {
+            const viewportPosition = modelViewer.ar.worldToViewport(lastDetectedPosition);
+            surfaceMarker.style.left = `${viewportPosition.x - 60}px`;
+            surfaceMarker.style.top = `${viewportPosition.y - 60}px`;
+          }
+        });
+      }
     }
 
     // Start the application when DOM is loaded
