@@ -232,28 +232,142 @@
     shadow-intensity="1"
     quick-look-browsers="safari chrome"
     ar-scale="fixed"
-    ar-placement="floor">
+    ar-placement="floor"
+    touch-action="none">
     <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
   </model-viewer>
 
   <script>
-    const modelViewer = document.querySelector('model-viewer');
-    const arButton = document.getElementById('ar-button');
-    const arHint = document.getElementById('ar-hint');
-    const surfaceMarker = document.getElementById('surface-marker');
-    const loadingIndicator = document.getElementById('loading-indicator');
-    const compatibilityMessage = document.getElementById('compatibility-message');
-    const dataPanel = document.getElementById('data-panel');
-    const arDataPanel = document.getElementById('ar-data-panel');
-    
-    let arSession = null;
-    let hitTestSource = null;
-    let lastDetectedPosition = null;
-    let surfaceDetectionTimeout = null;
-    let dummyDataInterval = null;
+    document.addEventListener('DOMContentLoaded', function() {
+      const modelViewer = document.querySelector('model-viewer');
+      const arButton = document.getElementById('ar-button');
+      const arHint = document.getElementById('ar-hint');
+      const surfaceMarker = document.getElementById('surface-marker');
+      const loadingIndicator = document.getElementById('loading-indicator');
+      const compatibilityMessage = document.getElementById('compatibility-message');
+      const dataPanel = document.getElementById('data-panel');
+      const arDataPanel = document.getElementById('ar-data-panel');
+      
+      // AR session variables
+      let arSession = null;
+      let isARSessionActive = false;
 
-    // Check AR availability
-    async function checkARSupport() {
-      try {
-       
-ar model comes for 1ms and it quickly disappears also  the dummy values are not showing in the ar viewer
+      // Check AR support
+      async function checkARSupport() {
+        try {
+          // Check if model-viewer AR is supported
+          const isSupported = await modelViewer.activateAR();
+          if (!isSupported) {
+            showCompatibilityMessage("AR is not supported on your device");
+            return false;
+          }
+          return true;
+        } catch (error) {
+          console.error("AR support check failed:", error);
+          showCompatibilityMessage("Error checking AR support");
+          return false;
+        }
+      }
+
+      function showCompatibilityMessage(message) {
+        compatibilityMessage.textContent = message;
+        compatibilityMessage.style.display = 'block';
+        arButton.style.display = 'none';
+      }
+
+      // Handle AR session events
+      modelViewer.addEventListener('ar-status', (event) => {
+        console.log('AR Status:', event.detail.status);
+        
+        switch(event.detail.status) {
+          case 'session-started':
+            isARSessionActive = true;
+            dataPanel.style.display = 'none';
+            arDataPanel.style.display = 'grid';
+            loadingIndicator.style.display = 'block';
+            break;
+            
+          case 'session-ended':
+            isARSessionActive = false;
+            dataPanel.style.display = 'grid';
+            arDataPanel.style.display = 'none';
+            loadingIndicator.style.display = 'none';
+            arHint.style.display = 'none';
+            break;
+            
+          case 'failed':
+            showCompatibilityMessage("AR failed to start. Try again in better lighting.");
+            break;
+        }
+      });
+
+      modelViewer.addEventListener('ar-tracking', (event) => {
+        console.log('AR Tracking:', event.detail.status);
+        
+        if (event.detail.status === 'tracking') {
+          loadingIndicator.style.display = 'none';
+          arHint.style.display = 'block';
+        } else {
+          loadingIndicator.style.display = 'block';
+          arHint.style.display = 'none';
+        }
+      });
+
+      // Handle model placement
+      modelViewer.addEventListener('click', (event) => {
+        if (!isARSessionActive) return;
+        
+        // Get the tap position
+        const tapX = event.clientX;
+        const tapY = event.clientY;
+        
+        // Show surface marker temporarily
+        surfaceMarker.style.display = 'block';
+        surfaceMarker.style.left = `${tapX - 60}px`;
+        surfaceMarker.style.top = `${tapY - 60}px`;
+        
+        setTimeout(() => {
+          surfaceMarker.style.display = 'none';
+        }, 500);
+      });
+
+      // Update dummy data
+      function updateDummyData() {
+        const now = new Date();
+        const seconds = now.getSeconds();
+        const minuteFactor = now.getMinutes() / 60;
+        
+        // Oscillating values for demo
+        const voltage = 46 + Math.sin(seconds/10) + minuteFactor;
+        const current = 0.5 + Math.sin(seconds/5) * 0.3;
+        const temp = 34 + Math.sin(seconds/7) * 2;
+        const soc = 92 - minuteFactor * 10;
+        
+        // Update both panels
+        document.getElementById('voltage').textContent = voltage.toFixed(1);
+        document.getElementById('ar-voltage').textContent = voltage.toFixed(1);
+        
+        document.getElementById('current').textContent = current.toFixed(1);
+        document.getElementById('ar-current').textContent = current.toFixed(1);
+        
+        document.getElementById('temperature').textContent = temp.toFixed(1);
+        document.getElementById('ar-temperature').textContent = temp.toFixed(1);
+        
+        document.getElementById('soc').textContent = Math.max(20, soc.toFixed(0));
+        document.getElementById('ar-soc').textContent = Math.max(20, soc.toFixed(0));
+      }
+
+      // Initialize
+      checkARSupport();
+      setInterval(updateDummyData, 1000);
+
+      // Prevent default touch behavior
+      document.addEventListener('touchmove', (e) => {
+        if (isARSessionActive) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+    });
+  </script>
+</body>
+</html>
