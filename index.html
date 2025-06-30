@@ -1,220 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Motorev 3D AR Viewer</title>
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <style>
-    /* ... (keep all your existing styles the same) ... */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    
+    /* Fallback container in case model-viewer fails */
+    #fallback-message {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: black;
+      color: white;
+      padding: 20px;
+      z-index: 1000;
+    }
+    
+    model-viewer {
+      width: 100vw;
+      height: 100vh;
+      background-color: #222;
+      position: fixed;
+      top: 0;
+      left: 0;
+    }
+    
+    /* Add other styles from previous versions as needed */
   </style>
 </head>
 <body>
-  <!-- ... (keep all your existing HTML the same) ... -->
+  <!-- Fallback message container -->
+  <div id="fallback-message">
+    <h2>Loading Error</h2>
+    <p id="error-details">Please wait while we load the 3D viewer...</p>
+    <button id="retry-button" style="padding: 10px 20px; background: orange; color: white; border: none; border-radius: 5px; margin-top: 20px;">Retry</button>
+  </div>
+
+  <model-viewer 
+    id="model-viewer"
+    src="motorev.glb"
+    alt="Motorev 3D Model"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    environment-image="neutral"
+    camera-controls
+    shadow-intensity="1"
+    auto-rotate
+    loading="eager">
+    <button slot="ar-button" id="ar-button" class="ar-button">View in AR</button>
+  </model-viewer>
 
   <script>
-    const modelViewer = document.querySelector('model-viewer');
-    const arButton = document.getElementById('ar-button');
-    const arHint = document.getElementById('ar-hint');
-    const surfaceMarker = document.getElementById('surface-marker');
-    const loadingIndicator = document.getElementById('loading-indicator');
-    const compatibilityMessage = document.getElementById('compatibility-message');
-    const dataPanel = document.getElementById('data-panel');
-    const arDataPanel = document.getElementById('ar-data-panel');
-    
-    let arSession = null;
-    let hitTestSource = null;
-    let lastDetectedPosition = null;
-    let surfaceDetectionTimeout = null;
-    let dummyDataInterval = null;
+    // Debugging function
+    function showError(message) {
+      console.error(message);
+      const fallback = document.getElementById('fallback-message');
+      const errorDetails = document.getElementById('error-details');
+      errorDetails.textContent = message;
+      fallback.style.display = 'flex';
+      fallback.style.flexDirection = 'column';
+      fallback.style.justifyContent = 'center';
+      fallback.style.alignItems = 'center';
+    }
 
-    // Improved AR availability check
-    async function checkARSupport() {
+    // Retry button functionality
+    document.getElementById('retry-button').addEventListener('click', () => {
+      window.location.reload();
+    });
+
+    // Main initialization function
+    async function init() {
       try {
-        // First check if model-viewer is properly loaded
-        if (!modelViewer || !modelViewer.canActivateAR) {
-          throw new Error('Model Viewer not loaded properly');
-        }
-
-        // Check for WebXR support
-        const isWebXRSupported = 'xr' in navigator;
-        
-        // Check for Scene Viewer support (Android)
-        const isSceneViewerSupported = 
-          /android/i.test(navigator.userAgent) && 
-          !/chrome|firefox|edge/i.test(navigator.userAgent);
-        
-        // Check for Quick Look support (iOS)
-        const isQuickLookSupported = 
-          /iphone|ipad|ipod/i.test(navigator.userAgent) && 
-          /safari/i.test(navigator.userAgent);
-
-        // If any AR mode is supported
-        if (isWebXRSupported || isSceneViewerSupported || isQuickLookSupported) {
-          // Hide compatibility message if shown
-          compatibilityMessage.style.display = 'none';
-          return true;
-        } else {
-          throw new Error('No AR modes supported');
-        }
-      } catch (error) {
-        console.log("AR support check:", error.message);
-        showCompatibilityMessage("AR may not be fully supported on your device. Try with Chrome on Android or Safari on iOS.");
-        return false;
-      }
-    }
-
-    function showCompatibilityMessage(message) {
-      compatibilityMessage.innerHTML = message + 
-        "<br><br>Supported browsers:<br>" +
-        "- Chrome for Android (WebXR)<br>" +
-        "- Safari for iOS (Quick Look)<br>" +
-        "- Native Android browser (Scene Viewer)";
-      compatibilityMessage.style.display = 'block';
-      arButton.style.display = 'none';
-    }
-
-    // Initialize AR session with better error handling
-    function initializeARSession() {
-      modelViewer.addEventListener('ar-status', (event) => {
-        console.log('AR Status:', event.detail.status);
-        
-        switch (event.detail.status) {
-          case 'session-started':
-            arSession = true;
-            dataPanel.style.display = 'none';
-            arDataPanel.style.display = 'grid';
-            arHint.style.display = 'block';
-            loadingIndicator.style.display = 'block';
-            startSurfaceDetection();
-            break;
-            
-          case 'session-ended':
-            arSession = false;
-            dataPanel.style.display = 'grid';
-            arDataPanel.style.display = 'none';
-            arHint.style.display = 'none';
-            loadingIndicator.style.display = 'none';
-            surfaceMarker.style.display = 'none';
-            clearTimeout(surfaceDetectionTimeout);
-            break;
-            
-          case 'not-supported':
-            showCompatibilityMessage("AR mode not supported in current context.");
-            break;
-            
-          case 'failed':
-            showCompatibilityMessage("AR session failed to start. Try again.");
-            break;
-        }
-      });
-
-      // Add error listener
-      modelViewer.addEventListener('error', (event) => {
-        console.error('Model Viewer Error:', event.detail);
-        showCompatibilityMessage("Error loading 3D model. Please check console for details.");
-      });
-    }
-
-    // Surface detection for AR placement with better checks
-    function startSurfaceDetection() {
-      if (!modelViewer.ar || !modelViewer.isInArMode) {
-        console.warn("AR mode not active - can't start surface detection");
-        return;
-      }
-
-      const updateLoop = () => {
-        if (!modelViewer.ar || !modelViewer.isInArMode) {
-          console.log("Stopping surface detection - AR session ended");
+        // 1. First check if model-viewer component is registered
+        if (!customElements.get('model-viewer')) {
+          showError('3D viewer component failed to load. Please check your internet connection.');
           return;
         }
 
-        try {
-          const hitTestResult = modelViewer.ar.hitTest(0.5, 0.5); // Center of the screen
-          if (hitTestResult) {
-            const position = hitTestResult.position;
-            lastDetectedPosition = position;
-            
-            // Update surface marker position
-            const viewportPosition = modelViewer.ar.worldToViewport(position);
-            surfaceMarker.style.left = `${viewportPosition.x - 60}px`;
-            surfaceMarker.style.top = `${viewportPosition.y - 60}px`;
-            surfaceMarker.style.display = 'block';
-            
-            loadingIndicator.style.display = 'none';
-            arHint.style.display = 'none';
-          } else {
-            surfaceMarker.style.display = 'none';
-            loadingIndicator.style.display = 'block';
-            arHint.style.display = 'block';
-          }
-        } catch (error) {
-          console.error("Surface detection error:", error);
-          loadingIndicator.textContent = "Surface detection failed";
+        // 2. Wait for the component to be upgraded
+        await customElements.whenDefined('model-viewer');
+        const modelViewer = document.getElementById('model-viewer');
+        
+        // 3. Check if model-viewer initialized properly
+        if (!modelViewer || !modelViewer.load) {
+          showError('3D viewer initialization failed.');
+          return;
         }
 
-        requestAnimationFrame(updateLoop);
-      };
-
-      updateLoop();
-    }
-
-    // Generate dummy data for demonstration
-    function generateDummyData() {
-      const voltage = (46 + Math.random() * 2).toFixed(1);
-      const current = (0.1 + Math.random() * 0.8).toFixed(1);
-      const temperature = (30 + Math.random() * 10).toFixed(1);
-      const soc = Math.max(80, Math.min(100, 92 + (Math.random() * 6 - 3))).toFixed(0);
-      const soh = Math.max(90, Math.min(100, 96 + (Math.random() * 4 - 2))).toFixed(0);
-      const speed = (Math.random() * 0.2).toFixed(1);
-      const range = Math.max(75, Math.min(85, 82 + (Math.random() * 6 - 3))).toFixed(0);
-
-      // Update both regular and AR panels
-      ['', 'ar-'].forEach(prefix => {
-        document.getElementById(`${prefix}voltage`).textContent = voltage;
-        document.getElementById(`${prefix}current`).textContent = current;
-        document.getElementById(`${prefix}temperature`).textContent = temperature;
-        document.getElementById(`${prefix}soc`).textContent = soc;
-        document.getElementById(`${prefix}soh`).textContent = soh;
-        document.getElementById(`${prefix}speed`).textContent = speed;
-        document.getElementById(`${prefix}range`).textContent = range;
-      });
-    }
-
-    // Initialize the application with better sequencing
-    async function init() {
-      // First check if model-viewer is loaded
-      if (!modelViewer) {
-        showCompatibilityMessage("3D viewer failed to load. Please refresh the page.");
-        return;
-      }
-
-      // Wait for model-viewer to be ready
-      await customElements.whenDefined('model-viewer');
-      
-      // Check AR support
-      const arSupported = await checkARSupport();
-      
-      if (arSupported) {
-        initializeARSession();
-        
-        // Start dummy data generation
-        dummyDataInterval = setInterval(generateDummyData, 2000);
-        generateDummyData();
-        
-        // Handle window resize
-        window.addEventListener('resize', () => {
-          if (lastDetectedPosition && modelViewer.ar) {
-            const viewportPosition = modelViewer.ar.worldToViewport(lastDetectedPosition);
-            surfaceMarker.style.left = `${viewportPosition.x - 60}px`;
-            surfaceMarker.style.top = `${viewportPosition.y - 60}px`;
-          }
+        // 4. Add error listeners
+        modelViewer.addEventListener('error', (event) => {
+          showError(`3D model failed to load: ${event.detail.message}`);
         });
+
+        modelViewer.addEventListener('load', () => {
+          console.log('3D model loaded successfully');
+          document.getElementById('fallback-message').style.display = 'none';
+        });
+
+        // 5. Check AR support
+        modelViewer.addEventListener('ar-status', (event) => {
+          console.log('AR status:', event.detail.status);
+        });
+
+        // 6. Add a timeout in case loading stalls
+        setTimeout(() => {
+          if (document.getElementById('fallback-message').style.display === 'none') return;
+          showError('Loading is taking longer than expected. Please check your connection.');
+        }, 10000);
+
+      } catch (error) {
+        showError(`Initialization error: ${error.message}`);
       }
     }
 
-    // Start the application when DOM is loaded
-    document.addEventListener('DOMContentLoaded', init);
+    // Start initialization when DOM is loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
   </script>
 </body>
 </html>
