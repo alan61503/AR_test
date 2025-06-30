@@ -255,3 +255,126 @@
     // Check AR availability
     async function checkARSupport() {
       try {
+        const supported = await modelViewer.canActivateAR();
+        if (!supported) {
+          showCompatibilityMessage("AR is not supported on your device or browser.");
+        }
+      } catch (error) {
+        console.error("AR support check failed:", error);
+        showCompatibilityMessage("AR is not supported on your device or browser.");
+      }
+    }
+
+    function showCompatibilityMessage(message) {
+      compatibilityMessage.textContent = message;
+      compatibilityMessage.style.display = 'block';
+      arButton.style.display = 'none';
+    }
+
+    // Initialize AR session
+    function initializeARSession() {
+      modelViewer.addEventListener('ar-status', (event) => {
+        if (event.detail.status === 'session-started') {
+          arSession = true;
+          dataPanel.style.display = 'none';
+          arDataPanel.style.display = 'grid';
+          arHint.style.display = 'block';
+          loadingIndicator.style.display = 'block';
+          startSurfaceDetection();
+        } else if (event.detail.status === 'session-ended') {
+          arSession = false;
+          dataPanel.style.display = 'grid';
+          arDataPanel.style.display = 'none';
+          arHint.style.display = 'none';
+          loadingIndicator.style.display = 'none';
+          surfaceMarker.style.display = 'none';
+          clearTimeout(surfaceDetectionTimeout);
+        }
+      });
+    }
+
+    // Surface detection for AR placement
+    function startSurfaceDetection() {
+      if (!modelViewer.ar) return;
+
+      const updateLoop = () => {
+        if (!modelViewer.ar || !modelViewer.isInArMode) return;
+
+        const hitTestResult = modelViewer.ar.hitTest(0.5, 0.5); // Center of the screen
+        if (hitTestResult) {
+          const position = hitTestResult.position;
+          lastDetectedPosition = position;
+          
+          // Update surface marker position
+          const viewportPosition = modelViewer.ar.worldToViewport(position);
+          surfaceMarker.style.left = `${viewportPosition.x - 60}px`;
+          surfaceMarker.style.top = `${viewportPosition.y - 60}px`;
+          surfaceMarker.style.display = 'block';
+          
+          loadingIndicator.style.display = 'none';
+          arHint.style.display = 'none';
+        } else {
+          surfaceMarker.style.display = 'none';
+          loadingIndicator.style.display = 'block';
+          arHint.style.display = 'block';
+        }
+
+        requestAnimationFrame(updateLoop);
+      };
+
+      updateLoop();
+    }
+
+    // Generate dummy data for demonstration
+    function generateDummyData() {
+      const voltage = (46 + Math.random() * 2).toFixed(1);
+      const current = (0.1 + Math.random() * 0.8).toFixed(1);
+      const temperature = (30 + Math.random() * 10).toFixed(1);
+      const soc = Math.max(80, Math.min(100, 92 + (Math.random() * 6 - 3))).toFixed(0);
+      const soh = Math.max(90, Math.min(100, 96 + (Math.random() * 4 - 2))).toFixed(0);
+      const speed = (Math.random() * 0.2).toFixed(1);
+      const range = Math.max(75, Math.min(85, 82 + (Math.random() * 6 - 3))).toFixed(0);
+
+      // Update regular panel
+      document.getElementById('voltage').textContent = voltage;
+      document.getElementById('current').textContent = current;
+      document.getElementById('temperature').textContent = temperature;
+      document.getElementById('soc').textContent = soc;
+      document.getElementById('soh').textContent = soh;
+      document.getElementById('speed').textContent = speed;
+      document.getElementById('range').textContent = range;
+
+      // Update AR panel
+      document.getElementById('ar-voltage').textContent = voltage;
+      document.getElementById('ar-current').textContent = current;
+      document.getElementById('ar-temperature').textContent = temperature;
+      document.getElementById('ar-soc').textContent = soc;
+      document.getElementById('ar-soh').textContent = soh;
+      document.getElementById('ar-speed').textContent = speed;
+      document.getElementById('ar-range').textContent = range;
+    }
+
+    // Initialize the application
+    function init() {
+      checkARSupport();
+      initializeARSession();
+      
+      // Start dummy data generation
+      dummyDataInterval = setInterval(generateDummyData, 2000);
+      generateDummyData();
+      
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        if (lastDetectedPosition && modelViewer.ar) {
+          const viewportPosition = modelViewer.ar.worldToViewport(lastDetectedPosition);
+          surfaceMarker.style.left = `${viewportPosition.x - 60}px`;
+          surfaceMarker.style.top = `${viewportPosition.y - 60}px`;
+        }
+      });
+    }
+
+    // Start the application when DOM is loaded
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
