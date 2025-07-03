@@ -1,157 +1,348 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Motorev 3D AR Viewer</title>
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #000;
-      color: white;
-    }
-    model-viewer {
-      width: 100vw;
-      height: 100vh;
-      background-color: #222;
-    }
-    .ar-button {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: orange;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 30px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      z-index: 100;
-    }
-    .data-panel {
-      position: fixed;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      background-color: rgba(0,0,0,0.7);
-      border-radius: 15px;
-      padding: 15px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      backdrop-filter: blur(5px);
-      z-index: 10;
-      border: 1px solid rgba(255,165,0,0.3);
-    }
-    .data-item {
-      display: flex;
-      flex-direction: column;
-    }
-    .data-label {
-      font-size: 12px;
-      color: #aaa;
-      margin-bottom: 2px;
-    }
-    .data-value {
-      font-size: 16px;
-      font-weight: bold;
-      color: orange;
-    }
-    .unit {
-      font-size: 12px;
-      color: #aaa;
-      margin-left: 2px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Vehicle Viewer</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a1a;
+            color: #ff7b00;
+            overflow: hidden;
+        }
+        
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        #model-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #data-panel {
+            width: 300px;
+            padding: 20px;
+            background-color: #2a2a2a;
+            border-left: 1px solid #ff7b00;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .data-section {
+            margin-bottom: 30px;
+        }
+        
+        .data-item {
+            margin-bottom: 15px;
+        }
+        
+        .data-label {
+            font-size: 14px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+        
+        .data-label:hover {
+            color: #ffaa00;
+            transform: translateX(5px);
+        }
+        
+        .data-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        #battery-btn {
+            background-color: #ff7b00;
+            color: #1a1a1a;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        #battery-btn:hover {
+            background-color: #ffaa00;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(255, 123, 0, 0.4);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        #battery-params {
+            height: 100%;
+        }
+        
+        .battery-item {
+            margin-bottom: 20px;
+        }
+        
+        .battery-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        #back-btn {
+            background-color: transparent;
+            color: #ff7b00;
+            border: 1px solid #ff7b00;
+            padding: 10px 15px;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        #back-btn:hover {
+            background-color: #ff7b00;
+            color: #1a1a1a;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff7b00;
+            font-size: 18px;
+        }
+    </style>
 </head>
 <body>
-
-  <div class="data-panel">
-    <div class="data-item">
-      <span class="data-label">Voltage</span>
-      <span class="data-value"><span id="voltage">--</span><span class="unit">V</span></span>
+    <div id="container">
+        <div id="model-container">
+            <div class="loading">Loading model...</div>
+        </div>
+        
+        <div id="data-panel">
+            <div id="vehicle-data">
+                <div class="data-section">
+                    <h2>Vehicle Status</h2>
+                    <div class="data-item">
+                        <div class="data-label">Speed</div>
+                        <div class="data-value" id="speed">72 km/h</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">Distance Covered</div>
+                        <div class="data-value" id="distance">1,245 km</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">Location</div>
+                        <div class="data-value" id="location">12.3456° N, 78.9101° E</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">Range</div>
+                        <div class="data-value" id="range">320 km</div>
+                    </div>
+                </div>
+                
+                <button id="battery-btn">Battery Parameters</button>
+            </div>
+            
+            <div id="battery-params" class="hidden">
+                <div class="data-section">
+                    <h2>Battery Parameters</h2>
+                    <div class="battery-item">
+                        <div class="data-label">State of Charge (SOC)</div>
+                        <div class="battery-value" id="soc">78%</div>
+                    </div>
+                    <div class="battery-item">
+                        <div class="data-label">State of Health (SOH)</div>
+                        <div class="battery-value" id="soh">92%</div>
+                    </div>
+                    <div class="battery-item">
+                        <div class="data-label">Temperature</div>
+                        <div class="battery-value" id="temp">32°C</div>
+                    </div>
+                    <div class="battery-item">
+                        <div class="data-label">Voltage</div>
+                        <div class="battery-value" id="voltage">396 V</div>
+                    </div>
+                    <div class="battery-item">
+                        <div class="data-label">Current</div>
+                        <div class="battery-value" id="current">45 A</div>
+                    </div>
+                </div>
+                
+                <button id="back-btn">Back to Vehicle</button>
+            </div>
+        </div>
     </div>
-    <div class="data-item">
-      <span class="data-label">Current</span>
-      <span class="data-value"><span id="current">--</span><span class="unit">A</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Temperature</span>
-      <span class="data-value"><span id="temperature">--</span><span class="unit">°C</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Charge</span>
-      <span class="data-value"><span id="soc">--</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">State of Health</span>
-      <span class="data-value"><span id="soh">--</span><span class="unit">%</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Speed</span>
-      <span class="data-value"><span id="speed">--</span><span class="unit">km/h</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Range</span>
-      <span class="data-value"><span id="range">--</span><span class="unit">km</span></span>
-    </div>
-    <div class="data-item">
-      <span class="data-label">Status</span>
-      <span class="data-value"><span id="status">--</span></span>
-    </div>
-  </div>
 
-  <model-viewer 
-    src="motorev.glb"
-    alt="Motorev 3D Model"
-    ar
-    ar-modes="scene-viewer quick-look"
-    environment-image="neutral"
-    auto-rotate
-    camera-controls>
-  </model-viewer>
-
-  <button id="ar-button" class="ar-button">View in AR</button>
-
-  <script>
-    const modelViewer = document.querySelector('model-viewer');
-    const arButton = document.getElementById('ar-button');
-
-    function getRandom(min, max) {
-      return (Math.random() * (max - min) + min).toFixed(1);
-    }
-
-    function updateDummyData() {
-      document.getElementById('voltage').innerText = getRandom(46, 47);
-      document.getElementById('current').innerText = getRandom(0.4, 0.6);
-      document.getElementById('temperature').innerText = getRandom(32, 35);
-      document.getElementById('soc').innerText = getRandom(90, 95);
-      document.getElementById('soh').innerText = getRandom(95, 97);
-      document.getElementById('speed').innerText = getRandom(0, 0.2);
-      document.getElementById('range').innerText = getRandom(80, 85);
-
-      const statuses = ["Connected"];
-      document.getElementById('status').innerText = statuses[Math.floor(Math.random() * statuses.length)];
-    }
-
-    updateDummyData();
-    setInterval(updateDummyData, 1500);
-
-    arButton.addEventListener('click', () => {
-      modelViewer.activateAR();
-    });
-
-    modelViewer.addEventListener('ar-status', (event) => {
-      arButton.textContent = event.detail.status === 'not-presenting' 
-        ? 'View in AR' 
-        : 'Exit AR';
-    });
-  </script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, controls, model;
+        let currentModel = 'autoo';
+        
+        // Initialize Three.js scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(5, 2, 5);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth - 300, window.innerHeight);
+            document.getElementById('model-container').appendChild(renderer.domElement);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+            
+            // Add controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.25;
+            
+            // Load initial model
+            loadModel('autoo.glb');
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            
+            // Button event listeners
+            document.getElementById('battery-btn').addEventListener('click', function() {
+                document.getElementById('vehicle-data').classList.add('hidden');
+                document.getElementById('battery-params').classList.remove('hidden');
+                loadModel('motorev.glb');
+                currentModel = 'motorev';
+            });
+            
+            document.getElementById('back-btn').addEventListener('click', function() {
+                document.getElementById('vehicle-data').classList.remove('hidden');
+                document.getElementById('battery-params').classList.add('hidden');
+                loadModel('autoo.glb');
+                currentModel = 'autoo';
+            });
+            
+            // Start animation loop
+            animate();
+        }
+        
+        // Load GLB model
+        function loadModel(modelPath) {
+            // Remove previous model if exists
+            if (model) {
+                scene.remove(model);
+            }
+            
+            // Show loading message
+            const loadingElement = document.querySelector('.loading');
+            loadingElement.style.display = 'block';
+            
+            // Load new model
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                modelPath,
+                function(gltf) {
+                    model = gltf.scene;
+                    scene.add(model);
+                    
+                    // Center and scale model
+                    const box = new THREE.Box3().setFromObject(model);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+                    
+                    model.position.x += (model.position.x - center.x);
+                    model.position.y += (model.position.y - center.y);
+                    model.position.z += (model.position.z - center.z);
+                    
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 5 / maxDim;
+                    model.scale.set(scale, scale, scale);
+                    
+                    // Hide loading message
+                    loadingElement.style.display = 'none';
+                },
+                undefined,
+                function(error) {
+                    console.error('Error loading model:', error);
+                    loadingElement.textContent = 'Error loading model';
+                }
+            );
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = (window.innerWidth - 300) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 300, window.innerHeight);
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // Start the application
+        init();
+        
+        // Update dummy data periodically for demo purposes
+        setInterval(function() {
+            if (currentModel === 'autoo') {
+                // Update vehicle data
+                const speeds = [72, 75, 68, 70, 65];
+                const distances = [1245, 1250, 1255, 1260, 1265];
+                const ranges = [320, 315, 310, 305, 300];
+                
+                document.getElementById('speed').textContent = 
+                    speeds[Math.floor(Math.random() * speeds.length)] + ' km/h';
+                document.getElementById('distance').textContent = 
+                    distances[Math.floor(Math.random() * distances.length)] + ' km';
+                document.getElementById('range').textContent = 
+                    ranges[Math.floor(Math.random() * ranges.length)] + ' km';
+            } else {
+                // Update battery data
+                const socs = [78, 77, 76, 75, 74];
+                const sohs = [92, 91, 90, 89, 88];
+                const temps = [32, 33, 34, 31, 30];
+                const voltages = [396, 395, 394, 397, 398];
+                const currents = [45, 44, 46, 47, 43];
+                
+                document.getElementById('soc').textContent = 
+                    socs[Math.floor(Math.random() * socs.length)] + '%';
+                document.getElementById('soh').textContent = 
+                    sohs[Math.floor(Math.random() * sohs.length)] + '%';
+                document.getElementById('temp').textContent = 
+                    temps[Math.floor(Math.random() * temps.length)] + '°C';
+                document.getElementById('voltage').textContent = 
+                    voltages[Math.floor(Math.random() * voltages.length)] + ' V';
+                document.getElementById('current').textContent = 
+                    currents[Math.floor(Math.random() * currents.length)] + ' A';
+            }
+        }, 2000);
+    </script>
 </body>
 </html>
