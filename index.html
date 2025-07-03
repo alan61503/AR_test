@@ -13,23 +13,29 @@
             background-color: #1a1a1a;
             color: #ff7b00;
             display: flex;
-            flex-direction: column;
             height: 100vh;
+            overflow: hidden;
         }
         
-        header {
-            padding: 15px;
-            text-align: center;
-            border-bottom: 1px solid #ff7b00;
-        }
-        
-        #main-content {
+        .data-panel {
+            width: 25%;
+            padding: 20px;
+            background-color: #2a2a2a;
             display: flex;
-            flex: 1;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        #left-panel {
+            border-right: 1px solid #ff7b00;
+        }
+        
+        #right-panel {
+            border-left: 1px solid #ff7b00;
         }
         
         #model-container {
-            flex: 1;
+            width: 50%;
             position: relative;
         }
         
@@ -39,27 +45,17 @@
             --progress-bar-color: #ff7b00;
         }
         
-        #data-panel {
-            width: 300px;
-            padding: 20px;
-            background-color: #2a2a2a;
-            border-left: 1px solid #ff7b00;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        
         .data-section {
             margin-bottom: 30px;
         }
         
         .data-item {
-            margin-bottom: 15px;
+            margin-bottom: 25px;
         }
         
         .data-label {
-            font-size: 14px;
-            margin-bottom: 5px;
+            font-size: 16px;
+            margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 1px;
             transition: all 0.3s ease;
@@ -71,7 +67,7 @@
         }
         
         .data-value {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             color: #ffffff;
         }
@@ -86,7 +82,7 @@
             border-radius: 4px;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-top: 20px;
+            margin-top: 30px;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
@@ -114,74 +110,114 @@
     </style>
 </head>
 <body>
-    <header>
-        <h1>Vehicle 3D Viewer</h1>
-    </header>
-    
-    <div id="main-content">
-        <div id="model-container">
-            <model-viewer 
-                id="model-viewer"
-                src="autoo.glb" 
-                alt="3D vehicle model"
-                auto-rotate
-                camera-controls
-                ar
-                shadow-intensity="1">
-            </model-viewer>
-        </div>
-        
-        <div id="data-panel">
-            <div id="vehicle-data">
-                <div class="data-section">
-                    <h2>Vehicle Status</h2>
-                    <div class="data-item">
-                        <div class="data-label">Speed</div>
-                        <div class="data-value" id="speed">72 km/h</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Distance Covered</div>
-                        <div class="data-value" id="distance">1,245 km</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Location</div>
-                        <div class="data-value" id="location">12.3456° N, 78.9101° E</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Range</div>
-                        <div class="data-value" id="range">320 km</div>
-                    </div>
+    <div class="data-panel" id="left-panel">
+        <div id="vehicle-data-left">
+            <div class="data-section">
+                <div class="data-item">
+                    <div class="data-label">Speed</div>
+                    <div class="data-value" id="speed">72 km/h</div>
                 </div>
-                
-                <button id="battery-btn">Battery Parameters</button>
+                <div class="data-item">
+                    <div class="data-label">Distance Covered</div>
+                    <div class="data-value" id="distance">1,245 km</div>
+                </div>
             </div>
             
-            <div id="battery-params" class="hidden">
-                <div class="data-section">
-                    <h2>Battery Parameters</h2>
-                    <div class="data-item">
-                        <div class="data-label">State of Charge (SOC)</div>
-                        <div class="data-value" id="soc">78%</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">State of Health (SOH)</div>
-                        <div class="data-value" id="soh">92%</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Temperature</div>
-                        <div class="data-value" id="temp">32°C</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Voltage</div>
-                        <div class="data-value" id="voltage">396 V</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Current</div>
-                        <div class="data-value" id="current">45 A</div>
-                    </div>
+            <div class="data-section">
+                <div class="data-item">
+                    <div class="data-label">Location</div>
+                    <div class="data-value" id="location">12.3456° N, 78.9101° E</div>
                 </div>
-                
-                <button id="back-btn">Back to Vehicle</button>
+                <div class="data-item">
+                    <div class="data-label">Range</div>
+                    <div class="data-value" id="range">320 km</div>
+                </div>
+            </div>
+            
+            <button id="battery-btn">Battery Parameters</button>
+        </div>
+        
+        <div id="battery-params-left" class="hidden">
+            <div class="data-section">
+                <div class="data-item">
+                    <div class="data-label">State of Charge</div>
+                    <div class="data-value" id="soc">78%</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">State of Health</div>
+                    <div class="data-value" id="soh">92%</div>
+                </div>
+            </div>
+            
+            <div class="data-section">
+                <div class="data-item">
+                    <div class="data-label">Temperature</div>
+                    <div class="data-value" id="temp">32°C</div>
+                </div>
+            </div>
+            
+            <button id="back-btn">Back to Vehicle</button>
+        </div>
+    </div>
+    
+    <div id="model-container">
+        <model-viewer 
+            id="model-viewer"
+            src="autoo.glb" 
+            alt="3D vehicle model"
+            auto-rotate
+            camera-controls
+            ar
+            shadow-intensity="1">
+        </model-viewer>
+    </div>
+    
+    <div class="data-panel" id="right-panel">
+        <div id="vehicle-data-right">
+            <div class="data-section">
+                <div class="data-item">
+                    <div class="data-label">Battery Status</div>
+                    <div class="data-value" id="battery-status">Normal</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Power Consumption</div>
+                    <div class="data-value" id="power">5.2 kWh/100km</div>
+                </div>
+            </div>
+            
+            <div class="data-section">
+                <div class="data-item">
+                    <div class="data-label">Charging Cycles</div>
+                    <div class="data-value" id="cycles">142</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Last Charge</div>
+                    <div class="data-value" id="last-charge">8 hours ago</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="battery-params-right" class="hidden">
+            <div class="data-section">
+                <div class="data-item">
+                    <div class="data-label">Voltage</div>
+                    <div class="data-value" id="voltage">396 V</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Current</div>
+                    <div class="data-value" id="current">45 A</div>
+                </div>
+            </div>
+            
+            <div class="data-section">
+                <div class="data-item">
+                    <div class="data-label">Max Capacity</div>
+                    <div class="data-value" id="capacity">64 kWh</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Cell Balance</div>
+                    <div class="data-value" id="balance">Good</div>
+                </div>
             </div>
         </div>
     </div>
@@ -191,31 +227,39 @@
         const modelViewer = document.getElementById('model-viewer');
         const batteryBtn = document.getElementById('battery-btn');
         const backBtn = document.getElementById('back-btn');
-        const vehicleData = document.getElementById('vehicle-data');
-        const batteryParams = document.getElementById('battery-params');
+        
+        // Left panel elements
+        const vehicleLeft = document.getElementById('vehicle-data-left');
+        const batteryLeft = document.getElementById('battery-params-left');
+        
+        // Right panel elements
+        const vehicleRight = document.getElementById('vehicle-data-right');
+        const batteryRight = document.getElementById('battery-params-right');
         
         // Button event listeners
         batteryBtn.addEventListener('click', function() {
             modelViewer.src = 'motorev.glb';
-            vehicleData.classList.add('hidden');
-            batteryParams.classList.remove('hidden');
+            vehicleLeft.classList.add('hidden');
+            batteryLeft.classList.remove('hidden');
+            vehicleRight.classList.add('hidden');
+            batteryRight.classList.remove('hidden');
         });
         
         backBtn.addEventListener('click', function() {
             modelViewer.src = 'autoo.glb';
-            vehicleData.classList.remove('hidden');
-            batteryParams.classList.add('hidden');
+            vehicleLeft.classList.remove('hidden');
+            batteryLeft.classList.add('hidden');
+            vehicleRight.classList.remove('hidden');
+            batteryRight.classList.add('hidden');
         });
         
         // Update dummy data periodically
         setInterval(function() {
-            if (!batteryParams.classList.contains('hidden')) {
-                // Update battery data
+            if (!batteryLeft.classList.contains('hidden')) {
+                // Update battery data (left panel)
                 const socs = [78, 77, 76, 75, 74];
                 const sohs = [92, 91, 90, 89, 88];
                 const temps = [32, 33, 34, 31, 30];
-                const voltages = [396, 395, 394, 397, 398];
-                const currents = [45, 44, 46, 47, 43];
                 
                 document.getElementById('soc').textContent = 
                     socs[Math.floor(Math.random() * socs.length)] + '%';
@@ -223,15 +267,31 @@
                     sohs[Math.floor(Math.random() * sohs.length)] + '%';
                 document.getElementById('temp').textContent = 
                     temps[Math.floor(Math.random() * temps.length)] + '°C';
+                
+                // Update battery data (right panel)
+                const voltages = [396, 395, 394, 397, 398];
+                const currents = [45, 44, 46, 47, 43];
+                const capacities = [64, 63.8, 63.5, 63.9, 64.1];
+                const balances = ['Good', 'Excellent', 'Fair', 'Good', 'Excellent'];
+                
                 document.getElementById('voltage').textContent = 
                     voltages[Math.floor(Math.random() * voltages.length)] + ' V';
                 document.getElementById('current').textContent = 
                     currents[Math.floor(Math.random() * currents.length)] + ' A';
+                document.getElementById('capacity').textContent = 
+                    capacities[Math.floor(Math.random() * capacities.length)] + ' kWh';
+                document.getElementById('balance').textContent = 
+                    balances[Math.floor(Math.random() * balances.length)];
             } else {
-                // Update vehicle data
+                // Update vehicle data (left panel)
                 const speeds = [72, 75, 68, 70, 65];
                 const distances = [1245, 1250, 1255, 1260, 1265];
                 const ranges = [320, 315, 310, 305, 300];
+                const locations = [
+                    '12.3456° N, 78.9101° E',
+                    '12.3460° N, 78.9105° E',
+                    '12.3452° N, 78.9098° E'
+                ];
                 
                 document.getElementById('speed').textContent = 
                     speeds[Math.floor(Math.random() * speeds.length)] + ' km/h';
@@ -239,6 +299,23 @@
                     distances[Math.floor(Math.random() * distances.length)] + ' km';
                 document.getElementById('range').textContent = 
                     ranges[Math.floor(Math.random() * ranges.length)] + ' km';
+                document.getElementById('location').textContent = 
+                    locations[Math.floor(Math.random() * locations.length)];
+                
+                // Update vehicle data (right panel)
+                const statuses = ['Normal', 'Optimal', 'Excellent'];
+                const powers = ['5.2', '5.1', '5.3', '5.0', '5.4'];
+                const cycles = [142, 143, 141, 144, 140];
+                const lastCharges = ['8 hours ago', '7 hours ago', '9 hours ago'];
+                
+                document.getElementById('battery-status').textContent = 
+                    statuses[Math.floor(Math.random() * statuses.length)];
+                document.getElementById('power').textContent = 
+                    powers[Math.floor(Math.random() * powers.length)] + ' kWh/100km';
+                document.getElementById('cycles').textContent = 
+                    cycles[Math.floor(Math.random() * cycles.length)];
+                document.getElementById('last-charge').textContent = 
+                    lastCharges[Math.floor(Math.random() * lastCharges.length)];
             }
         }, 2000);
     </script>
