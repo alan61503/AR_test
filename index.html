@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Vehicle Viewer</title>
+  <title>Vehicle & Battery Viewer</title>
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <style>
     body {
@@ -11,11 +11,13 @@
       padding: 0;
       background-color: #1a1a1a;
       font-family: Arial, sans-serif;
+      color: #ff7b00;
+      overflow: hidden;
     }
     
     model-viewer {
       width: 100%;
-      height: 100vh;
+      height: 70vh;
       --progress-bar-color: #ff7b00;
       --progress-mask: #1a1a1a;
       background-color: #1a1a1a;
@@ -23,9 +25,8 @@
     
     #toggle-btn {
       position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+      top: 20px;
+      right: 20px;
       background-color: #ff7b00;
       color: #1a1a1a;
       border: none;
@@ -41,22 +42,53 @@
     
     #toggle-btn:hover {
       background-color: #ffaa00;
-      transform: translateX(-50%) translateY(-3px);
+      transform: translateY(-3px);
       box-shadow: 0 5px 15px rgba(255, 123, 0, 0.4);
     }
     
-    #status-text {
+    #data-panel {
       position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: white;
-      background-color: rgba(0, 0, 0, 0.7);
-      padding: 8px 16px;
-      border-radius: 4px;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 30vh;
+      background-color: #222;
+      padding: 20px;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+    
+    .data-item {
+      padding: 15px;
+      background-color: #333;
+      border-radius: 5px;
+      border-left: 4px solid #ff7b00;
+    }
+    
+    .data-label {
       font-size: 14px;
-      z-index: 10;
-      display: none;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .data-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+    
+    @media (max-width: 768px) {
+      #data-panel {
+        grid-template-columns: repeat(2, 1fr);
+        height: 40vh;
+      }
+      
+      model-viewer {
+        height: 60vh;
+      }
     }
   </style>
 </head>
@@ -74,59 +106,109 @@
     <div slot="poster">Loading vehicle model...</div>
   </model-viewer>
   
-  <button id="toggle-btn">View Battery Health</button>
-  <div id="status-text"></div>
+  <button id="toggle-btn">View Battery</button>
+  
+  <div id="data-panel">
+    <!-- Vehicle Data -->
+    <div class="data-item" id="speed">
+      <div class="data-label">Speed</div>
+      <div class="data-value">72 km/h</div>
+    </div>
+    <div class="data-item" id="distance">
+      <div class="data-label">Distance</div>
+      <div class="data-value">1,245 km</div>
+    </div>
+    <div class="data-item" id="range">
+      <div class="data-label">Range</div>
+      <div class="data-value">320 km</div>
+    </div>
+    <div class="data-item" id="status">
+      <div class="data-label">Status</div>
+      <div class="data-value">Normal</div>
+    </div>
+  </div>
 
   <script>
     const viewer = document.getElementById('viewer');
     const toggleBtn = document.getElementById('toggle-btn');
-    const statusText = document.getElementById('status-text');
+    const dataPanel = document.getElementById('data-panel');
     
     let showingVehicle = true;
-    const FALLBACK_VEHICLE = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
-    const FALLBACK_BATTERY = 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb';
     
-    // Try to load local model first, fallback to demo model if needed
-    function loadModel(modelPath, fallbackPath, modelName) {
-      fetch(modelPath)
-        .then(response => {
-          if (!response.ok) throw new Error('Local file not found');
-          viewer.src = modelPath;
-          showStatus(`Showing ${modelName}`);
-        })
-        .catch(error => {
-          console.warn(`Local model (${modelPath}) not found, using fallback`);
-          viewer.src = fallbackPath;
-          showStatus(`Using demo model (local ${modelName} not found)`);
-        });
+    // Vehicle data values
+    const vehicleData = {
+      speed: [72, 75, 68, 70, 65],
+      distance: [1245, 1250, 1255, 1260, 1265],
+      range: [320, 315, 310, 305, 300],
+      status: ['Normal', 'Optimal', 'Excellent']
+    };
+    
+    // Battery data values
+    const batteryData = {
+      soc: [78, 77, 76, 75, 74],
+      soh: [92, 91, 90, 89, 88],
+      temp: [32, 33, 34, 31, 30],
+      voltage: [396, 395, 394, 397, 398]
+    };
+    
+    // Update data display
+    function updateData() {
+      if (showingVehicle) {
+        document.getElementById('speed').querySelector('.data-value').textContent = 
+          vehicleData.speed[Math.floor(Math.random() * vehicleData.speed.length)] + ' km/h';
+        document.getElementById('distance').querySelector('.data-value').textContent = 
+          vehicleData.distance[Math.floor(Math.random() * vehicleData.distance.length)] + ' km';
+        document.getElementById('range').querySelector('.data-value').textContent = 
+          vehicleData.range[Math.floor(Math.random() * vehicleData.range.length)] + ' km';
+        document.getElementById('status').querySelector('.data-value').textContent = 
+          vehicleData.status[Math.floor(Math.random() * vehicleData.status.length)];
+      } else {
+        document.getElementById('speed').querySelector('.data-value').textContent = 
+          batteryData.soc[Math.floor(Math.random() * batteryData.soc.length)] + '%';
+        document.getElementById('distance').querySelector('.data-value').textContent = 
+          batteryData.soh[Math.floor(Math.random() * batteryData.soh.length)] + '%';
+        document.getElementById('range').querySelector('.data-value').textContent = 
+          batteryData.temp[Math.floor(Math.random() * batteryData.temp.length)] + '°C';
+        document.getElementById('status').querySelector('.data-value').textContent = 
+          batteryData.voltage[Math.floor(Math.random() * batteryData.voltage.length)] + ' V';
+      }
     }
     
-    function showStatus(message) {
-      statusText.textContent = message;
-      statusText.style.display = 'block';
-      setTimeout(() => {
-        statusText.style.display = 'none';
-      }, 3000);
-    }
-    
+    // Toggle between vehicle and battery
     toggleBtn.addEventListener('click', () => {
       if (showingVehicle) {
-        loadModel('packk.glb', FALLBACK_BATTERY, 'battery pack');
+        viewer.src = 'packk.glb';
         toggleBtn.textContent = 'View Vehicle';
+        
+        // Update labels for battery view
+        document.getElementById('speed').querySelector('.data-label').textContent = 'SOC';
+        document.getElementById('distance').querySelector('.data-label').textContent = 'SOH';
+        document.getElementById('range').querySelector('.data-label').textContent = 'Temp';
+        document.getElementById('status').querySelector('.data-label').textContent = 'Voltage';
       } else {
-        loadModel('autoo.glb', FALLBACK_VEHICLE, 'vehicle');
-        toggleBtn.textContent = 'View Battery Health';
+        viewer.src = 'autoo.glb';
+        toggleBtn.textContent = 'View Battery';
+        
+        // Restore labels for vehicle view
+        document.getElementById('speed').querySelector('.data-label').textContent = 'Speed';
+        document.getElementById('distance').querySelector('.data-label').textContent = 'Distance';
+        document.getElementById('range').querySelector('.data-label').textContent = 'Range';
+        document.getElementById('status').querySelector('.data-label').textContent = 'Status';
       }
       showingVehicle = !showingVehicle;
+      updateData();
     });
     
     viewer.addEventListener('error', (event) => {
       console.error('Model load failed:', event.detail);
-      showStatus(`Error loading model: ${event.detail.message}`);
+      alert('Error loading model. Check console for details.');
     });
     
-    // Initial load
-    loadModel('autoo.glb', FALLBACK_VEHICLE, 'vehicle');
+    // Update data every 2 seconds
+    setInterval(updateData, 2000);
+    
+    // Initial data update
+    updateData();
   </script>
 </body>
 </html>
