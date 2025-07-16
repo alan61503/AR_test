@@ -13,11 +13,13 @@
       font-family: Arial, sans-serif;
       color: #ff7b00;
       overflow: hidden;
+      display: flex;
+      height: 100vh;
     }
     
     model-viewer {
-      width: 100%;
-      height: 70vh;
+      width: 50%;
+      height: 100%;
       --progress-bar-color: #ff7b00;
       --progress-mask: #1a1a1a;
       background-color: #1a1a1a;
@@ -25,8 +27,9 @@
     
     #toggle-btn {
       position: absolute;
-      top: 20px;
-      right: 20px;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       background-color: #ff7b00;
       color: #1a1a1a;
       border: none;
@@ -42,29 +45,35 @@
     
     #toggle-btn:hover {
       background-color: #ffaa00;
-      transform: translateY(-3px);
+      transform: translateX(-50%) translateY(-3px);
       box-shadow: 0 5px 15px rgba(255, 123, 0, 0.4);
     }
     
-    #data-panel {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 30vh;
-      background-color: #222;
+    .data-panel {
+      width: 25%;
       padding: 20px;
-      box-sizing: border-box;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    
+    .data-section {
+      margin-bottom: 30px;
     }
     
     .data-item {
+      margin-bottom: 25px;
       padding: 15px;
-      background-color: #333;
-      border-radius: 5px;
-      border-left: 4px solid #ff7b00;
+      background-color: #222;
+      border-radius: 4px;
+      border-left: 3px solid #ff7b00;
+      transition: all 0.3s ease;
+    }
+    
+    .data-item:hover {
+      transform: translateX(5px);
+      border-left-color: #ffaa00;
+      box-shadow: 0 5px 15px rgba(255, 123, 0, 0.2);
     }
     
     .data-label {
@@ -72,6 +81,11 @@
       margin-bottom: 8px;
       text-transform: uppercase;
       letter-spacing: 1px;
+      transition: all 0.3s ease;
+    }
+    
+    .data-item:hover .data-label {
+      color: #ffaa00;
     }
     
     .data-value {
@@ -80,19 +94,75 @@
       color: #ffffff;
     }
     
+    #left-panel {
+      border-right: 1px solid #333;
+    }
+    
+    #right-panel {
+      border-left: 1px solid #333;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
     @media (max-width: 768px) {
-      #data-panel {
-        grid-template-columns: repeat(2, 1fr);
-        height: 40vh;
+      body {
+        flex-direction: column;
       }
       
       model-viewer {
-        height: 60vh;
+        width: 100%;
+        height: 50vh;
+      }
+      
+      .data-panel {
+        width: 100%;
+        height: 25vh;
       }
     }
   </style>
 </head>
 <body>
+  <div class="data-panel" id="left-panel">
+    <div id="vehicle-data-left">
+      <div class="data-section">
+        <div class="data-item">
+          <div class="data-label">Speed</div>
+          <div class="data-value" id="speed">72 km/h</div>
+        </div>
+        <div class="data-item">
+          <div class="data-label">Distance</div>
+          <div class="data-value" id="distance">1,245 km</div>
+        </div>
+      </div>
+      
+      <div class="data-section">
+        <div class="data-item">
+          <div class="data-label">Range</div>
+          <div class="data-value" id="range">320 km</div>
+        </div>
+        <div class="data-item">
+          <div class="data-label">Location</div>
+          <div class="data-value" id="location">12.3456° N, 78.9101° E</div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="battery-data-left" class="hidden">
+      <div class="data-section">
+        <div class="data-item">
+          <div class="data-label">State of Charge</div>
+          <div class="data-value" id="soc">78%</div>
+        </div>
+        <div class="data-item">
+          <div class="data-label">State of Health</div>
+          <div class="data-value" id="soh">92%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <model-viewer
     id="viewer"
     src="autoo.glb"
@@ -106,32 +176,67 @@
     <div slot="poster">Loading vehicle model...</div>
   </model-viewer>
   
-  <button id="toggle-btn">View Battery</button>
-  
-  <div id="data-panel">
-    <!-- Vehicle Data -->
-    <div class="data-item" id="speed">
-      <div class="data-label">Speed</div>
-      <div class="data-value">72 km/h</div>
+  <div class="data-panel" id="right-panel">
+    <div id="vehicle-data-right">
+      <div class="data-section">
+        <div class="data-item">
+          <div class="data-label">Status</div>
+          <div class="data-value" id="status">Normal</div>
+        </div>
+        <div class="data-item">
+          <div class="data-label">Power Consumption</div>
+          <div class="data-value" id="power">5.2 kWh/100km</div>
+        </div>
+      </div>
+      
+      <div class="data-section">
+        <div class="data-item">
+          <div class="data-label">Charging Cycles</div>
+          <div class="data-value" id="cycles">142</div>
+        </div>
+        <div class="data-item">
+          <div class="data-label">Last Charge</div>
+          <div class="data-value" id="last-charge">8 hours ago</div>
+        </div>
+      </div>
     </div>
-    <div class="data-item" id="distance">
-      <div class="data-label">Distance</div>
-      <div class="data-value">1,245 km</div>
-    </div>
-    <div class="data-item" id="range">
-      <div class="data-label">Range</div>
-      <div class="data-value">320 km</div>
-    </div>
-    <div class="data-item" id="status">
-      <div class="data-label">Status</div>
-      <div class="data-value">Normal</div>
+    
+    <div id="battery-data-right" class="hidden">
+      <div class="data-section">
+        <div class="data-item">
+          <div class="data-label">Temperature</div>
+          <div class="data-value" id="temp">32°C</div>
+        </div>
+        <div class="data-item">
+          <div class="data-label">Voltage</div>
+          <div class="data-value" id="voltage">396 V</div>
+        </div>
+      </div>
+      
+      <div class="data-section">
+        <div class="data-item">
+          <div class="data-label">Current</div>
+          <div class="data-value" id="current">45 A</div>
+        </div>
+        <div class="data-item">
+          <div class="data-label">Cell Balance</div>
+          <div class="data-value" id="balance">Good</div>
+        </div>
+      </div>
     </div>
   </div>
+  
+  <button id="toggle-btn">View Battery Health</button>
 
   <script>
     const viewer = document.getElementById('viewer');
     const toggleBtn = document.getElementById('toggle-btn');
-    const dataPanel = document.getElementById('data-panel');
+    
+    // Panel elements
+    const vehicleLeft = document.getElementById('vehicle-data-left');
+    const batteryLeft = document.getElementById('battery-data-left');
+    const vehicleRight = document.getElementById('vehicle-data-right');
+    const batteryRight = document.getElementById('battery-data-right');
     
     let showingVehicle = true;
     
@@ -140,7 +245,15 @@
       speed: [72, 75, 68, 70, 65],
       distance: [1245, 1250, 1255, 1260, 1265],
       range: [320, 315, 310, 305, 300],
-      status: ['Normal', 'Optimal', 'Excellent']
+      location: [
+        '12.3456° N, 78.9101° E',
+        '12.3460° N, 78.9105° E',
+        '12.3452° N, 78.9098° E'
+      ],
+      status: ['Normal', 'Optimal', 'Excellent'],
+      power: ['5.2', '5.1', '5.3', '5.0', '5.4'],
+      cycles: [142, 143, 141, 144, 140],
+      lastCharge: ['8 hours ago', '7 hours ago', '9 hours ago']
     };
     
     // Battery data values
@@ -148,55 +261,70 @@
       soc: [78, 77, 76, 75, 74],
       soh: [92, 91, 90, 89, 88],
       temp: [32, 33, 34, 31, 30],
-      voltage: [396, 395, 394, 397, 398]
+      voltage: [396, 395, 394, 397, 398],
+      current: [45, 44, 46, 47, 43],
+      balance: ['Good', 'Excellent', 'Fair']
     };
     
-    // Update data display
+    // Update all data displays
     function updateData() {
       if (showingVehicle) {
-        document.getElementById('speed').querySelector('.data-value').textContent = 
+        // Update vehicle data
+        document.getElementById('speed').textContent = 
           vehicleData.speed[Math.floor(Math.random() * vehicleData.speed.length)] + ' km/h';
-        document.getElementById('distance').querySelector('.data-value').textContent = 
+        document.getElementById('distance').textContent = 
           vehicleData.distance[Math.floor(Math.random() * vehicleData.distance.length)] + ' km';
-        document.getElementById('range').querySelector('.data-value').textContent = 
+        document.getElementById('range').textContent = 
           vehicleData.range[Math.floor(Math.random() * vehicleData.range.length)] + ' km';
-        document.getElementById('status').querySelector('.data-value').textContent = 
+        document.getElementById('location').textContent = 
+          vehicleData.location[Math.floor(Math.random() * vehicleData.location.length)];
+        document.getElementById('status').textContent = 
           vehicleData.status[Math.floor(Math.random() * vehicleData.status.length)];
+        document.getElementById('power').textContent = 
+          vehicleData.power[Math.floor(Math.random() * vehicleData.power.length)] + ' kWh/100km';
+        document.getElementById('cycles').textContent = 
+          vehicleData.cycles[Math.floor(Math.random() * vehicleData.cycles.length)];
+        document.getElementById('last-charge').textContent = 
+          vehicleData.lastCharge[Math.floor(Math.random() * vehicleData.lastCharge.length)];
       } else {
-        document.getElementById('speed').querySelector('.data-value').textContent = 
+        // Update battery data
+        document.getElementById('soc').textContent = 
           batteryData.soc[Math.floor(Math.random() * batteryData.soc.length)] + '%';
-        document.getElementById('distance').querySelector('.data-value').textContent = 
+        document.getElementById('soh').textContent = 
           batteryData.soh[Math.floor(Math.random() * batteryData.soh.length)] + '%';
-        document.getElementById('range').querySelector('.data-value').textContent = 
+        document.getElementById('temp').textContent = 
           batteryData.temp[Math.floor(Math.random() * batteryData.temp.length)] + '°C';
-        document.getElementById('status').querySelector('.data-value').textContent = 
+        document.getElementById('voltage').textContent = 
           batteryData.voltage[Math.floor(Math.random() * batteryData.voltage.length)] + ' V';
+        document.getElementById('current').textContent = 
+          batteryData.current[Math.floor(Math.random() * batteryData.current.length)] + ' A';
+        document.getElementById('balance').textContent = 
+          batteryData.balance[Math.floor(Math.random() * batteryData.balance.length)];
       }
     }
     
-    // Toggle between vehicle and battery
+    // Toggle between vehicle and battery views
     toggleBtn.addEventListener('click', () => {
       if (showingVehicle) {
         viewer.src = 'packk.glb';
         toggleBtn.textContent = 'View Vehicle';
         
-        // Update labels for battery view
-        document.getElementById('speed').querySelector('.data-label').textContent = 'SOC';
-        document.getElementById('distance').querySelector('.data-label').textContent = 'SOH';
-        document.getElementById('range').querySelector('.data-label').textContent = 'Temp';
-        document.getElementById('status').querySelector('.data-label').textContent = 'Voltage';
+        // Switch to battery data panels
+        vehicleLeft.classList.add('hidden');
+        batteryLeft.classList.remove('hidden');
+        vehicleRight.classList.add('hidden');
+        batteryRight.classList.remove('hidden');
       } else {
         viewer.src = 'autoo.glb';
-        toggleBtn.textContent = 'View Battery';
+        toggleBtn.textContent = 'View Battery Health';
         
-        // Restore labels for vehicle view
-        document.getElementById('speed').querySelector('.data-label').textContent = 'Speed';
-        document.getElementById('distance').querySelector('.data-label').textContent = 'Distance';
-        document.getElementById('range').querySelector('.data-label').textContent = 'Range';
-        document.getElementById('status').querySelector('.data-label').textContent = 'Status';
+        // Switch to vehicle data panels
+        vehicleLeft.classList.remove('hidden');
+        batteryLeft.classList.add('hidden');
+        vehicleRight.classList.remove('hidden');
+        batteryRight.classList.add('hidden');
       }
       showingVehicle = !showingVehicle;
-      updateData();
     });
     
     viewer.addEventListener('error', (event) => {
